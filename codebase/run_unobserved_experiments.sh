@@ -6,7 +6,7 @@
 #SBATCH --qos=mcml                      # Quality of service
 #SBATCH --gres=gpu:1                    # Number of GPUs (if needed)
 #SBATCH --container-image="nvcr.io/nvidia/pytorch:24.11-py3"
-#SBATCH -D ./
+#SBATCH -D ~/workspace/AmortizedCausalDiscovery/codebase
 
 pip install pylint==3.2.7
 pip install seaborn==0.13.2
