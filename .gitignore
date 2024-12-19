@@ -16,7 +16,8 @@ docs/_build/
 target/
 
 # generated data
-data/*.npy
+**/data/*.npy
+**/data/*.json
 
 ##own
 .idea/

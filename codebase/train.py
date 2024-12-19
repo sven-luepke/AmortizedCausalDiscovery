@@ -6,6 +6,7 @@ from collections import defaultdict
 import time
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 from model.modules import *
 from utils import arg_parser, logger, data_loader, forward_pass_and_eval
@@ -180,6 +181,7 @@ def test(encoder, decoder, epoch):
 
 
 if __name__ == "__main__":
+    plt.switch_backend('agg')
 
     args = arg_parser.parse_args()
     logs = logger.Logger(args)

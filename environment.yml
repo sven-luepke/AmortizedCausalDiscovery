@@ -3,7 +3,7 @@ channels:
   - defaults
 dependencies:
   - torchvision
-  - cudatoolkit=10.1
+ # - cudatoolkit=10.1
   - pytorch
   - pylint
   - pandas
