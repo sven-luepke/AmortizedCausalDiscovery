@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1                    # Number of GPUs (if needed)
 #SBATCH --container-image="nvcr.io/nvidia/pytorch:24.11-py3"
 #SBATCH -D ./
-#SBATCH -t=12:00:00
+#SBATCH -t 12:00:00
 
 pip install pylint==3.2.7 seaborn==0.13.2
 cd ~/workspace/AmortizedCausalDiscovery/codebase
