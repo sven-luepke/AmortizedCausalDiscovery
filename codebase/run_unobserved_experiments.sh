@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --o=output_%j.log          # Standard output and error log (%j will be replaced by job ID)
+#SBATCH --output=output_%j.log          # Standard output and error log (%j will be replaced by job ID)
 #SBATCH --error=error_%j.log            # Error log
 #SBATCH --partition=mcml-hgx-a100-80x4  # Partition name
 #SBATCH --ntasks=4                      # Number of tasks
