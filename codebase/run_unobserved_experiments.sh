@@ -10,6 +10,8 @@
 pip install pylint==3.2.7
 pip install seaborn==0.13.2
 
+cd ~/workspace/AmortizedCausalDiscovery/codebase
+
 python -m data.generate_dataset
 python -m train --suffix _springs5  # observed
 python -m train --suffix _springs5 --unobserved 1 --model_unobserved 0  # ACD with latent
