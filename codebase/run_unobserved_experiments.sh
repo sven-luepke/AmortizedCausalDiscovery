@@ -8,13 +8,11 @@
 #SBATCH --container-image="nvcr.io/nvidia/pytorch:24.11-py3"
 #SBATCH -D ./
 
-# Load Python module (if necessary)
-module load python/3.11
-
 pip install pylint==3.2.7 seaborn==0.13.2
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
-python -m data.generate_dataset &>> error_%j.log
-python -m train --suffix _springs5  # observed
-python -m train --suffix _springs5 --unobserved 1 --model_unobserved 0  # ACD with latent
-python -m train --suffix _springs5 --unobserved 1 --model_unobserved 1  # None
+python -m test
+python -m data.generate_dataset --num-train 50 --num-valid 10 --num-test 10
+#python -m train --suffix _springs5  # observed
+#python -m train --suffix _springs5 --unobserved 1 --model_unobserved 0  # ACD with latent
+#python -m train --suffix _springs5 --unobserved 1 --model_unobserved 1  # None
