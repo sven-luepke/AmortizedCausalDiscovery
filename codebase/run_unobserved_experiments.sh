@@ -11,15 +11,14 @@
 pip install pylint==3.2.7 seaborn==0.13.2
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
-python -m test
-python -m data.generate_dataset
-python -m train --suffix _springs5 # observed
-python -m train --suffix _springs5 --unobserved 1 --model_unobserved 0  # ACD with latent
-python -m train --suffix _springs5 --unobserved 1 --model_unobserved 1  # None
-python -m train --suffix _springs5 --unobserved 1 --model_unobserved 2  # Mean
+python -u -m data.generate_dataset
+python -u -m train --suffix _springs5 # observed
+python -u -m train --suffix _springs5 --unobserved 1 --model_unobserved 0  # ACD with latent
+python -u -m train --suffix _springs5 --unobserved 1 --model_unobserved 1  # None
+python -u -m train --suffix _springs5 --unobserved 1 --model_unobserved 2  # Mean
 
-python -m data.generate_dataset --uninfluenced_particle --influencer_particle
-python -m train --suffix _springs5_uninfluenced_influencer  # observed
-python -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 0  # ACD with latent
-python -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 1  # None
-python -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 2  # Mean
+python -u -m data.generate_dataset --uninfluenced_particle --influencer_particle
+python -u -m train --suffix _springs5_uninfluenced_influencer  # observed
+python -u -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 0  # ACD with latent
+python -u -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 1  # None
+python -u -m train --suffix _springs5_uninfluenced_influencer --unobserved 1 --model_unobserved 2  # Mean
