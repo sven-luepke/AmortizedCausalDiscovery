@@ -127,7 +127,7 @@ def edge_accuracy(preds, target, binary=True):
     if binary:
         preds = (preds >= 1).long()
     correct = preds.float().data.eq(target.float().data.view_as(preds)).cpu().sum()
-    return np.float(correct) / (target.size(0) * target.size(1))
+    return np.float32(correct) / (target.size(0) * target.size(1))
 
 
 def calc_auroc(pred_edges, GT_edges):
@@ -192,7 +192,7 @@ def edge_accuracy_observed(preds, target, num_atoms=5):
     idx = get_observed_relations_idx(num_atoms)
     _, preds = preds.max(-1)
     correct = preds[:, idx].eq(target[:, idx]).cpu().sum()
-    return np.float(correct) / (target.size(0) * len(idx))
+    return np.float32(correct) / (target.size(0) * len(idx))
 
 
 def calc_auroc_observed(pred_edges, GT_edges, num_atoms=5):
