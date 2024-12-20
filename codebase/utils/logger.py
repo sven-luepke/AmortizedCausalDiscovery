@@ -160,12 +160,14 @@ class Logger:
 
     def append_train_loss(self, loss):
         for k, v in loss.items():
-            self.train_losses.at[str(self.train_losses_idx), k] = np.mean(v)
+            if type(v) != defaultdict:
+                self.train_losses.at[str(self.train_losses_idx), k] = np.mean(v)
         self.train_losses_idx += 1
 
     def append_val_loss(self, val_loss):
         for k, v in val_loss.items():
-            self.val_losses.at[str(self.val_losses_idx), k] = np.mean(v)
+            if type(v) != defaultdict:
+                self.val_losses.at[str(self.val_losses_idx), k] = np.mean(v)
         self.val_losses_idx += 1
 
     def append_test_loss(self, test_loss):
