@@ -13,5 +13,6 @@ pip install pylint==3.2.7 seaborn==0.13.2
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
 
-python -u -m train --suffix _springs5 --unobserved 1 --model_unobserved 0 --dont_shuffle_unobserved --epochs 8  # ACD with latent
-python -u -m train --suffix _springs5 --unobserved 1 --model_unobserved 3 --dont_shuffle_unobserved --epochs 8 # New model
+python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=128 --unobserved 1 --model_unobserved 3 --predict_initial_point
+python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=128 --unobserved 1 --model_unobserved 3
+python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=128 --unobserved 1 --model_unobserved 0

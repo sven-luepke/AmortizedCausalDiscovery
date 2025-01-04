@@ -161,14 +161,15 @@ def forward_pass_and_eval(
 
         # 2. Predict the hidden confounder using the decoder
         current_step_data = data_encoder[:, :, 0:1, :]
-        # TODO: use the first output of the LSTM encoder instead of the first observed data point
-        #current_step_data[:, mask_idx, 0, :] = unobserved[:, 0, 0, :]
+        if args.predict_initial_point:
+            current_step_data[:, mask_idx, 0, :] = unobserved[:, 0, 0, :]
         data_list = [current_step_data]
         for step in range(data_encoder.size(2) - 1):
             current_step_data = decoder(
                 current_step_data, edges, rel_rec, rel_send, 1, True,
             )
-            current_step_data[:, mask_idx, :, :] = data_encoder[:, mask_idx, step + 1:step + 2, :]
+            # teacher forcing for the observed time series'
+            current_step_data[:, :-1, :, :] = data_encoder[:, :-1, step + 1:step + 2, :]
             data_list.append(current_step_data)
 
         unobserved = torch.cat(data_list, dim=2)[:, mask_idx, :, :].unsqueeze(1)
