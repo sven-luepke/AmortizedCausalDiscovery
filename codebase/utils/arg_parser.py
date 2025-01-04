@@ -132,6 +132,12 @@ def parse_args():
         "If 3, use the decoder to infer unobserved particle.",
     )
     parser.add_argument(
+        "--predict_initial_point",
+        action="store_true",
+        default=False,
+        help="If true, predict the starting point of the unobserved time series. If false, use the true starting point.",
+    )
+    parser.add_argument(
         "--dont_shuffle_unobserved",
         action="store_true",
         default=False,
