@@ -46,7 +46,7 @@ def test_time_adapt(
             tta_edges = utils.gumbel_softmax(tta_logits, tau=args.temp, hard=False)
 
             tta_output = decoder(
-                tta_data_decoder, tta_edges, rel_rec, rel_send, args.prediction_steps
+                tta_data_decoder, tta_edges, rel_rec, rel_send, args.prediction_steps,
             )
 
             loss = utils.nll_gaussian(tta_output, tta_target, args.var)
@@ -143,79 +143,130 @@ def forward_pass_and_eval(
         uniform_prior_mean = cmax
         uniform_prior_width = cmax 
 
-    #################### ENCODER ####################
-    if args.use_encoder:
-        if args.unobserved > 0 and args.model_unobserved == 0:
-            ## model unobserved time-series
-            (
-                logits,
-                unobserved,
-                losses["mse_unobserved"],
-            ) = encoder(data_encoder, rel_rec, rel_send, mask_idx=mask_idx)
-            data_decoder = utils_unobserved.add_unobserved_to_data(
-                args, data_decoder, unobserved, mask_idx, diff_data_enc_dec
-            )
-        elif args.global_temp:
-            (logits, temperature_samples, 
-                    inferred_mean, inferred_width) = encoder(
-                            data_encoder, rel_rec, rel_send)
-            temperature_samples *= 2 * cmax
-            inferred_mean *= 2 * cmax 
-            inferred_width *= 2 * cmax
-        else:
-            ## model only the edges
-            logits = encoder(data_encoder, rel_rec, rel_send)
-    else:
-        logits = edge_probs.unsqueeze(0).repeat(data_encoder.shape[0], 1, 1)
 
-    if args.test_time_adapt and args.num_tta_steps > 0 and testing:
-        assert args.unobserved == 0, "No implementation for test-time adaptation when there are unobserved time-series."
-        logits = test_time_adapt(
-            args,
+    prediction_steps = data_decoder.size(2) if testing else args.prediction_steps
+
+    if args.use_encoder and args.model_unobserved == 3:
+        # new hidden series prediction
+        target_unobserved = data_encoder[:, mask_idx, :, :]
+
+        # 1. Predict the causal graph using the LSTM encoder
+        (
             logits,
-            decoder,
-            data_encoder,
-            rel_rec,
-            rel_send,
-            predicted_atoms,
-            log_prior,
+            unobserved,
+            _,
+        ) = encoder(data_encoder, rel_rec, rel_send, mask_idx=mask_idx)
+        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        prob = utils.my_softmax(logits, -1)
+
+        # 2. Predict the hidden confounder using the decoder
+        current_step_data = data_encoder[:, :, 0:1, :]
+        # TODO: use the first output of the LSTM encoder instead of the first observed data point
+        #current_step_data[:, mask_idx, 0, :] = unobserved[:, 0, 0, :]
+        data_list = [current_step_data]
+        for step in range(data_encoder.size(2) - 1):
+            current_step_data = decoder(
+                current_step_data, edges, rel_rec, rel_send, 1, True,
+            )
+            current_step_data[:, mask_idx, :, :] = data_encoder[:, mask_idx, step + 1:step + 2, :]
+            data_list.append(current_step_data)
+
+        unobserved = torch.cat(data_list, dim=2)[:, mask_idx, :, :].unsqueeze(1)
+        data_encoder = utils_unobserved.add_unobserved_to_data(
+            args, data_encoder, unobserved, mask_idx, False
+        )
+        
+        losses["mse_unobserved"] = F.mse_loss(torch.squeeze(unobserved), torch.squeeze(target_unobserved))
+        data_decoder = utils_unobserved.add_unobserved_to_data(
+            args, data_decoder, unobserved, mask_idx, diff_data_enc_dec
         )
 
-    edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
-    prob = utils.my_softmax(logits, -1)
+        # 3. Predict the causal graph using the non-LSTM encoder using the predicted hidden series
+        logits = encoder(data_encoder, rel_rec, rel_send, apply_mask=False)
+        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        prob = utils.my_softmax(logits, -1)
 
-    target = data_decoder[:, :, 1:, :]
-
-    #################### DECODER ####################
-    if args.decoder == "rnn":
         output = decoder(
             data_decoder,
             edges,
             rel_rec,
             rel_send,
-            pred_steps=args.prediction_steps,
-            burn_in=True,
-            burn_in_steps=args.timesteps - args.prediction_steps,
+            prediction_steps,
         )
+    
     else:
-        if args.global_temp:
-            output = decoder(
-                data_decoder, 
-                edges, 
-                temperature_samples, 
-                rel_rec, 
-                rel_send, 
-                args.prediction_steps
-            )
+        #################### ENCODER ####################
+        if args.use_encoder:
+            if args.unobserved > 0 and args.model_unobserved == 0:
+                ## model unobserved time-series
+                (
+                    logits,
+                    unobserved,
+                    losses["mse_unobserved"],
+                ) = encoder(data_encoder, rel_rec, rel_send, mask_idx=mask_idx)
+                data_decoder = utils_unobserved.add_unobserved_to_data(
+                    args, data_decoder, unobserved, mask_idx, diff_data_enc_dec
+                )
+            elif args.global_temp:
+                (logits, temperature_samples, 
+                        inferred_mean, inferred_width) = encoder(
+                                data_encoder, rel_rec, rel_send)
+                temperature_samples *= 2 * cmax
+                inferred_mean *= 2 * cmax 
+                inferred_width *= 2 * cmax
+            else:
+                ## model only the edges
+                logits = encoder(data_encoder, rel_rec, rel_send)
         else:
+            logits = edge_probs.unsqueeze(0).repeat(data_encoder.shape[0], 1, 1)
+
+        if args.test_time_adapt and args.num_tta_steps > 0 and testing:
+            assert args.unobserved == 0, "No implementation for test-time adaptation when there are unobserved time-series."
+            logits = test_time_adapt(
+                args,
+                logits,
+                decoder,
+                data_encoder,
+                rel_rec,
+                rel_send,
+                predicted_atoms,
+                log_prior,
+            )
+
+        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        prob = utils.my_softmax(logits, -1)
+
+        #################### DECODER ####################
+        if args.decoder == "rnn":
             output = decoder(
                 data_decoder,
                 edges,
                 rel_rec,
                 rel_send,
-                args.prediction_steps,
+                pred_steps=prediction_steps,
+                burn_in=True,
+                burn_in_steps=args.timesteps - prediction_steps,
             )
+        else:
+            if args.global_temp:
+                output = decoder(
+                    data_decoder, 
+                    edges, 
+                    temperature_samples, 
+                    rel_rec, 
+                    rel_send, 
+                    prediction_steps
+                )
+            else:
+                output = decoder(
+                    data_decoder,
+                    edges,
+                    rel_rec,
+                    rel_send,
+                    prediction_steps,
+                )
 
+    target = data_decoder[:, :, 1:, :]
     #################### LOSSES ####################
     if args.unobserved > 0:
         if args.model_unobserved != 1:

@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 
+import os
 import time
 import numpy as np
 import torch
@@ -147,7 +148,7 @@ def test(encoder, decoder, epoch):
             data_encoder = data[:, :, : args.timesteps, :].contiguous()
             data_decoder = data[:, :, args.timesteps : -1, :].contiguous()
 
-            losses, _, _, _, = forward_pass_and_eval.forward_pass_and_eval(
+            losses, output, unobserved, _, = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -163,6 +164,95 @@ def test(encoder, decoder, epoch):
                 testing=True,
                 temperatures=temperatures,
             )
+
+            for j in range(1):
+                ############ Plotting ############
+                import os
+                import matplotlib.pyplot as plt
+
+                # print(data.shape)
+                # print(output.shape)
+                # #print(unobserved.shape) # 0 if None, else Tensor
+                # print(data_decoder.shape)
+                # print("-------------------")
+
+                plot_dir = os.path.join(logs.args.log_path, "plots")
+                os.makedirs(plot_dir, exist_ok=True)
+
+                # data shape = [batch_size, #particles, trajectory_length, 4]
+                # We are only using the first two coordinates: [:, :2]
+                plot_data = data[j, :, :, :2].cpu()     # shape: (#particles, trajectory_length, 2)
+                plot_output = output[j, :, :, :2].cpu() # shape: (#particles, trajectory_length, 2)
+
+                plt.figure()
+                colors = ["C0", "C1", "C2", "C3", "C4"]
+                
+                has_unobserved = isinstance(unobserved, torch.Tensor) or data.shape[1] != output.shape[1]
+                has_unobserved_prediction = has_unobserved and data.shape[1] == output.shape[1]
+                #print(has_unobserved)
+                #print(has_unobserved_prediction)
+
+                # 1) Plot the data (with alpha=0.5 and a filled circle at the end)
+                num_observed_particles = plot_data.shape[0] if not has_unobserved else plot_data.shape[0] - 1
+                for i in range(num_observed_particles):  # Loop over particles
+                    x = plot_data[i, :, 0].numpy()
+                    y = plot_data[i, :, 1].numpy()
+
+                    # Plot the trajectory with alpha=0.5
+                    plt.plot(x, y, alpha=0.5, linewidth=1)
+
+                    # Plot a filled circle at the last point of the trajectory
+                    plt.plot(x[-1], y[-1], marker='o', markersize=8, color=colors[i], alpha=0.5)
+
+                # 2) Plot the output (with alpha=1.0), using the same color as the corresponding data
+                for i in range(num_observed_particles):
+                    x_out = plot_output[i, :, 0].numpy()
+                    y_out = plot_output[i, :, 1].numpy()
+
+                    plt.plot(x_out, y_out, alpha=1.0, color=colors[i], linewidth=2)
+                    plt.plot(x_out[-1], y_out[-1], marker='o', markersize=8, color=colors[i], alpha=1.0)
+
+                # Save the main plot
+                xlim = plt.xlim()
+                ylim = plt.ylim()
+                plt.savefig(os.path.join(plot_dir, f"data_{batch_idx:03}_{j:03}.png"))
+                plt.close()
+
+                ##############################################
+                # Only plot the *last* particle to a separate
+                # plot if data_decoder.shape[0] != data.shape[0]
+                ##############################################
+                if has_unobserved:
+                    # Create a new figure for the last particle
+                    plt.figure()
+
+                    # Extract the last particle from ground truth and output
+                    last_particle_data = plot_data[-1]   # shape: (trajectory_length, 2)
+
+                    # Plot true trajectory (with alpha=0.5)
+                    color = colors[-1]
+                    x_true = last_particle_data[:, 0].numpy()
+                    y_true = last_particle_data[:, 1].numpy()
+                    plt.plot(x_true, y_true, alpha=0.5, color=color, linewidth=1)
+                    plt.plot(x_true[-1], y_true[-1], marker='o', markersize=8, color=color, alpha=0.5)
+
+                    if has_unobserved_prediction:
+                        last_particle_out  = plot_output[-1]
+                        last_particle_out = unobserved[j, 0, :, :2].cpu()
+
+                        x_out = last_particle_out[:, 0].numpy()
+                        y_out = last_particle_out[:, 1].numpy()
+
+                        plt.plot(x_out, y_out, alpha=1.0, color=color, linewidth=2)
+                        plt.plot(x_out[-1], y_out[-1], marker='o', markersize=8, color=color, alpha=1.0)
+
+                    # Save this separate figure
+                    plt.xlim(xlim)
+                    plt.ylim(ylim)
+                    plt.savefig(os.path.join(plot_dir, f"data_{batch_idx:03}_{j:03}_unobserved.png"))
+                    plt.close()
+
+
 
         test_losses = utils.append_losses(test_losses, losses)
 

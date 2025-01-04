@@ -36,7 +36,7 @@ def load_encoder(args):
             args.encoder_dropout,
             args.factor,
         )
-    elif args.unobserved > 0 and args.model_unobserved == 0:
+    elif args.unobserved > 0 and args.model_unobserved == 0 or args.model_unobserved == 3:
         encoder = MLPEncoderUnobserved(
             args,
             args.timesteps * args.dims,

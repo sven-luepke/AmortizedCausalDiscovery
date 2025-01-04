@@ -85,7 +85,7 @@ class MLPDecoder(nn.Module):
         # Predict position/velocity difference
         return single_timestep_inputs + pred
 
-    def forward(self, inputs, rel_type, rel_rec, rel_send, pred_steps=1):
+    def forward(self, inputs, rel_type, rel_rec, rel_send, pred_steps=1, keep_last=False):
         # NOTE: Assumes that we have the same graph across all samples.
 
         inputs = inputs.transpose(1, 2).contiguous()
@@ -131,6 +131,9 @@ class MLPDecoder(nn.Module):
         for i in range(len(preds)):
             output[:, i::pred_steps, :, :] = preds[i]
 
-        pred_all = output[:, : (inputs.size(1) - 1), :, :]
+        if not keep_last:
+            pred_all = output[:, : (inputs.size(1) - 1), :, :]
+        else:
+            pred_all = output[:, : (inputs.size(1)), :, :]
 
         return pred_all.transpose(1, 2).contiguous()
