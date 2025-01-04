@@ -47,29 +47,32 @@ class MLPEncoderUnobserved(MLPEncoder):
         )
         return unobserved, loss_kl_latent
 
-    def forward(self, inputs, rel_rec, rel_send, mask_idx=0):
-        timesteps = inputs.size(2)
+    def forward(self, inputs, rel_rec, rel_send, mask_idx=0, apply_mask=True):
+        if apply_mask:
+            timesteps = inputs.size(2)
 
-        # input shape: [num_sims, num_atoms, num_timesteps, num_dims]
-        observed = utils_unobserved.remove_unobserved(self.args, inputs, mask_idx)
+            # input shape: [num_sims, num_atoms, num_timesteps, num_dims]
+            observed = utils_unobserved.remove_unobserved(self.args, inputs, mask_idx)
 
-        observed = observed.permute(2, 0, 1, 3)
-        observed = observed.reshape(observed.size(0), observed.size(1), -1)
-        unobserved, _ = self.lstm1(observed)
-        unobserved, _ = self.lstm2(unobserved)
-        unobserved = unobserved.unsqueeze(0).permute(2, 0, 1, 3)
-        unobserved = torch.reshape(
-            unobserved, [unobserved.size(0), unobserved.size(1), timesteps, -1]
-        )
-        # output shape: [num_sims, num_atoms, num_timesteps, num_dims]
+            observed = observed.permute(2, 0, 1, 3)
+            observed = observed.reshape(observed.size(0), observed.size(1), -1)
+            unobserved, _ = self.lstm1(observed)
+            unobserved, _ = self.lstm2(unobserved)
+            unobserved = unobserved.unsqueeze(0).permute(2, 0, 1, 3)
+            unobserved = torch.reshape(
+                unobserved, [unobserved.size(0), unobserved.size(1), timesteps, -1]
+            )
+            # output shape: [num_sims, num_atoms, num_timesteps, num_dims]
 
-        target_unobserved = inputs[:, mask_idx, :, :]
-        mse_unobserved = self.evaluate_unobserved(unobserved, target_unobserved)
+            target_unobserved = inputs[:, mask_idx, :, :]
+            mse_unobserved = self.evaluate_unobserved(unobserved, target_unobserved)
 
-        data_encoder = torch.cat(
-            (inputs[:, :mask_idx, :], unobserved, inputs[:, mask_idx + 1 :, :],), dim=1,
-        )
+            data_encoder = torch.cat(
+                (inputs[:, :mask_idx, :], unobserved, inputs[:, mask_idx + 1 :, :],), dim=1,
+            )
 
-        output = super().forward(data_encoder, rel_rec, rel_send)
+            output = super().forward(data_encoder, rel_rec, rel_send)
 
-        return (output, unobserved, mse_unobserved)
+            return (output, unobserved, mse_unobserved)
+        else:
+            return super().forward(inputs, rel_rec, rel_send)

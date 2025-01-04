@@ -128,7 +128,8 @@ def parse_args():
         default=0,
         help="If 0, use NRI to infer unobserved particle. "
         "If 1, removes unobserved from data. "
-        "If 2, fills empty slot with mean of observed time-series (mean imputation)",
+        "If 2, fills empty slot with mean of observed time-series (mean imputation)"
+        "If 3, use the decoder to infer unobserved particle.",
     )
     parser.add_argument(
         "--dont_shuffle_unobserved",
