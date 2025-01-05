@@ -237,8 +237,11 @@ def test(encoder, decoder, epoch):
                     plt.plot(x_true[-1], y_true[-1], marker='o', markersize=8, color=color, alpha=0.5)
 
                     if has_unobserved_prediction:
-                        last_particle_out  = plot_output[-1]
-                        last_particle_out = unobserved[j, 0, :, :2].cpu()
+                        #last_particle_out  = plot_output[-1]
+                        # TODO: plot both the filled in unobserved trajectory and the predicted trajectory
+                        #last_particle_out = unobserved[j, 0, :, :2].cpu()
+
+                        last_particle_out = torch.cat([unobserved[j, 0, :, :2].cpu(), plot_output[-1]], dim=0)
 
                         x_out = last_particle_out[:, 0].numpy()
                         y_out = last_particle_out[:, 1].numpy()
