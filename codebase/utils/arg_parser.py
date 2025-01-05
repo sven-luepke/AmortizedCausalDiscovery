@@ -138,6 +138,12 @@ def parse_args():
         help="If true, predict the starting point of the unobserved time series. If false, use the true starting point.",
     )
     parser.add_argument(
+        "--exclude_loss_unobserved",
+        action="store_true",
+        default=False,
+        help="If true, exclude the unobserved series prediction from the loss.",
+    )
+    parser.add_argument(
         "--dont_shuffle_unobserved",
         action="store_true",
         default=False,
