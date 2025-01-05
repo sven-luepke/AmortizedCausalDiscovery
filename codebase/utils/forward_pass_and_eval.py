@@ -317,6 +317,7 @@ def forward_pass_and_eval(
     losses["loss_nll"] = utils.nll_gaussian(
         output, target, args.var
     ) 
+    # TODO: the NLL-Loss should not include the unobserved time-series???
 
     losses["loss_mse"] = F.mse_loss(output, target)
 
