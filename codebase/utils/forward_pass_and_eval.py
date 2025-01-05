@@ -313,11 +313,19 @@ def forward_pass_and_eval(
     losses["acc"] = utils.edge_accuracy(logits, relations)
     losses["auroc"] = utils.calc_auroc(prob, relations)
 
-    ### output losses ###
-    losses["loss_nll"] = utils.nll_gaussian(
-        output, target, args.var
-    ) 
-    # TODO: the NLL-Loss should not include the unobserved time-series???
+    
+    if args.exclude_loss_unobserved:
+        # the NLL-Loss should not include the unobserved time-series
+        losses["loss_nll"] = utils.nll_gaussian(
+            utils_unobserved.remove_unobserved(args, output, mask_idx), 
+            utils_unobserved.remove_unobserved(args, target, mask_idx), 
+            args.var,
+        )
+    else:
+        ### output losses ###
+        losses["loss_nll"] = utils.nll_gaussian(
+            output, target, args.var
+        )
 
     losses["loss_mse"] = F.mse_loss(output, target)
 
