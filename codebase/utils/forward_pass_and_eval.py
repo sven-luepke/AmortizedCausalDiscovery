@@ -296,16 +296,19 @@ def forward_pass_and_eval(
 
     ## calculate performance based on how many particles are influenced by unobserved one/last one
     if not args.shuffle_unobserved and args.unobserved > 0:
-        losses = utils_unobserved.calc_performance_per_num_influenced(
-            args,
-            relations,
-            output,
-            target,
-            logits,
-            prob,
-            mask_idx,
-            losses
-        )
+        try:
+            losses = utils_unobserved.calc_performance_per_num_influenced(
+                args,
+                relations,
+                output,
+                target,
+                logits,
+                prob,
+                mask_idx,
+                losses
+            )
+        except:
+            pass
 
     #################### MAIN LOSSES ####################
     ### latent losses ###
