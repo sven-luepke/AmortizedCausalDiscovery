@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --output=output_%j.log          # Standard output and error log (%j will be replaced by job ID)
 #SBATCH --error=error_%j.log            # Error log
-#SBATCH --partition=mcml-hgx-h100-92x4  # Partition name
+#SBATCH --partition=mcml-dgx-a100-40x8  # Partition name
 #SBATCH --ntasks=2                      # Number of tasks
 #SBATCH --qos=mcml                      # Quality of service
 #SBATCH --gres=gpu:1                    # Number of GPUs (if needed)
