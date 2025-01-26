@@ -61,21 +61,30 @@ class SimulationDecoder(nn.Module):
         offdiag_indices = offdiag_indices[0] * num_nodes + offdiag_indices[1]
         return offdiag_indices
 
-    def forward(self, inputs, relations, rel_rec, rel_send, pred_steps=1):
+    def forward(self, inputs, relations, rel_rec, rel_send, pred_steps=1, keep_last=False):
         # Input has shape: [num_sims, num_things, num_timesteps, num_dims]
         # Relation mx shape: [num_sims, num_things*num_things]
+
+        if not keep_last:
+            size = inputs.size(2) - 1
+        else:
+            size = inputs.size(2)
 
         # Only keep single dimension of softmax output
         relations = relations[:, :, 1]
 
-        loc = inputs[:, :, :-1, :2].contiguous()
-        vel = inputs[:, :, :-1, 2:].contiguous()
+        if not keep_last:
+            loc = inputs[:, :, :-1, :2].contiguous()
+            vel = inputs[:, :, :-1, 2:].contiguous()
+        else:
+            loc = inputs[:, :, :, :2].contiguous()
+            vel = inputs[:, :, :, 2:].contiguous()
 
         # Broadcasting/shape tricks for parallel processing of time steps
         loc = loc.permute(0, 2, 1, 3).contiguous()
         vel = vel.permute(0, 2, 1, 3).contiguous()
-        loc = loc.view(inputs.size(0) * (inputs.size(2) - 1), inputs.size(1), 2)
-        vel = vel.view(inputs.size(0) * (inputs.size(2) - 1), inputs.size(1), 2)
+        loc = loc.view(inputs.size(0) * size, inputs.size(1), 2)
+        vel = vel.view(inputs.size(0) * size, inputs.size(1), 2)
 
         loc, vel = self.unnormalize(loc, vel)
 
@@ -106,12 +115,12 @@ class SimulationDecoder(nn.Module):
 
             # Tricks for parallel processing of time steps
             pair_dist = pair_dist.view(
-                inputs.size(0), (inputs.size(2) - 1), inputs.size(1), inputs.size(1), 2,
+                inputs.size(0), size, inputs.size(1), inputs.size(1), 2,
             )
             forces = (forces_size.unsqueeze(-1).unsqueeze(1) * pair_dist).sum(3)
 
             forces = forces.view(
-                inputs.size(0) * (inputs.size(2) - 1), inputs.size(1), 2
+                inputs.size(0) * size, inputs.size(1), 2
             )
 
             # Leapfrog integration step
@@ -123,8 +132,8 @@ class SimulationDecoder(nn.Module):
 
         loc, vel = self.renormalize(loc, vel)
 
-        loc = loc.view(inputs.size(0), (inputs.size(2) - 1), inputs.size(1), 2)
-        vel = vel.view(inputs.size(0), (inputs.size(2) - 1), inputs.size(1), 2)
+        loc = loc.view(inputs.size(0), size, inputs.size(1), 2)
+        vel = vel.view(inputs.size(0), size, inputs.size(1), 2)
 
         loc = loc.permute(0, 2, 1, 3)
         vel = vel.permute(0, 2, 1, 3)
