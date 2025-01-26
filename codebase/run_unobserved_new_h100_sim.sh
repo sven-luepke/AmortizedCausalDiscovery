@@ -18,7 +18,7 @@ python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --u
 python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 3 --predict_initial_point --decoder=sim
 python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 3 --exclude_loss_unobserved --decoder=sim
 python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 3 --decoder=sim
-python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 0 --decoder=sim
-python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 1 --decoder=sim
-python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 2 --decoder=sim
-python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --decoder=sim
+#python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 0 --decoder=sim
+#python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 1 --decoder=sim
+#python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --unobserved 1 --model_unobserved 2 --decoder=sim
+#python -u -m train --suffix _springs5 --dont_shuffle_unobserved --epochs=200 --decoder=sim
