@@ -8,6 +8,7 @@ from model.MLPEncoder import MLPEncoder
 from model.CNNEncoder import CNNEncoder
 from model.MLPEncoderUnobserved import MLPEncoderUnobserved
 from model.EncoderGlobalTemp import CNNEncoderGlobalTemp
+from model.transformer_encoder import TransformerEncoder
 
 from model.MLPDecoder import MLPDecoder
 from model.RNNDecoder import RNNDecoder
@@ -63,6 +64,15 @@ def load_encoder(args):
                 args.edge_types,
                 args.encoder_dropout,
                 args.factor,
+            )
+        elif args.encoder == "transformer":
+            encoder = TransformerEncoder(
+                args,
+                args.dims,
+                args.encoder_hidden,
+                args.edge_types,
+                do_prob=args.encoder_dropout,
+                factor=args.factor,
             )
 
     encoder, num_GPU = utils.distribute_over_GPUs(args, encoder, num_GPU=args.num_GPU)
