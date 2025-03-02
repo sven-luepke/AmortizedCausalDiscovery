@@ -44,4 +44,7 @@ class MLPEncoder(Encoder):
             x = torch.cat((x, x_skip), dim=2)  # Skip connection
             x = self.mlp4(x)
 
-        return self.fc_out(x)
+        x = self.fc_out(x)
+        # replicate graph for all time steps
+        x = x.unsqueeze(1).expand(-1, inputs.shape[2], -1, -1)
+        return x

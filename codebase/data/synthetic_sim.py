@@ -133,6 +133,7 @@ class SpringSim(object):
         uninfluenced=False,
         confounder=False,
         edges=None,
+        dynamic_edges=False,
     ):
         n = self.n_balls
         assert T % sample_freq == 0
@@ -149,6 +150,8 @@ class SpringSim(object):
                 confounder=confounder,
                 spring_prob=spring_prob,
             )
+
+        edge_switch = np.random.randint(10, T - 10)
 
         # Initialize location and velocity
         loc = np.zeros((T_save, 2, n))
@@ -191,8 +194,20 @@ class SpringSim(object):
             F[F < -self._max_F] = -self._max_F
 
             vel_next += self._delta_T * F
+            
+            edge_list = []
             # run leapfrog
             for i in range(1, T):
+
+                if i == edge_switch and dynamic_edges:
+                    edges = self.get_edges(
+                        undirected=undirected,
+                        influencer=influencer,
+                        uninfluenced=uninfluenced,
+                        confounder=confounder,
+                        spring_prob=spring_prob,
+                    )
+                
                 loc_next += self._delta_T * vel_next
                 loc_next, vel_next = self._clamp(loc_next, vel_next)
 
@@ -201,6 +216,7 @@ class SpringSim(object):
                     vel_next[:, -1] = vel_fixed
 
                 if i % sample_freq == 0:
+                    edge_list.append(edges)
                     loc[counter, :, :], vel[counter, :, :] = loc_next, vel_next
                     counter += 1
 
@@ -227,6 +243,10 @@ class SpringSim(object):
             # Add noise to observations
             loc += np.random.randn(T_save, 2, self.n_balls) * self.noise_var
             vel += np.random.randn(T_save, 2, self.n_balls) * self.noise_var
+
+            if dynamic_edges:
+                edges = np.stack(edge_list, axis=0)
+
             return loc, vel, edges
 
 

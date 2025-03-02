@@ -90,15 +90,15 @@ class MLPDecoder(nn.Module):
 
         inputs = inputs.transpose(1, 2).contiguous()
 
-        sizes = [
-            rel_type.size(0),
-            inputs.size(1),
-            rel_type.size(1),
-            rel_type.size(2),
-        ]  # batch, sequence length, interactions between particles, interaction types
-        rel_type = rel_type.unsqueeze(1).expand(
-            sizes
-        )  # copy relations over sequence length
+        # sizes = [
+        #     rel_type.size(0),
+        #     inputs.size(1),
+        #     rel_type.size(1),
+        #     rel_type.size(2),
+        # ]  # batch, sequence length, interactions between particles, interaction types
+        # rel_type = rel_type.unsqueeze(1).expand(
+        #     sizes
+        # )  # copy relations over sequence length
 
         time_steps = inputs.size(1)
         assert pred_steps <= time_steps
@@ -106,11 +106,13 @@ class MLPDecoder(nn.Module):
 
         # Only take n-th timesteps as starting points (n: pred_steps)
         last_pred = inputs[:, 0::pred_steps, :, :]
-        curr_rel_type = rel_type[:, 0::pred_steps, :, :]
-        # NOTE: Assumes rel_type is constant (i.e. same across all time steps).
 
         # Run n prediction steps
         for step in range(0, pred_steps):
+            curr_rel_type = rel_type[:, step::pred_steps, :, :]
+            if step == pred_steps - 1:
+                curr_rel_type = torch.cat([curr_rel_type, curr_rel_type[:, -1:, :, :]], 1)
+            # NOTE: time varying edges
             last_pred = self.single_step_forward(
                 last_pred, rel_rec, rel_send, curr_rel_type
             )

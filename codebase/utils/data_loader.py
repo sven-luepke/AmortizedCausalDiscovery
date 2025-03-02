@@ -78,13 +78,22 @@ def data_preparation(
     loc = np.transpose(loc, [0, 3, 1, 2])
     vel = np.transpose(vel, [0, 3, 1, 2])
     feat = np.concatenate([loc, vel], axis=3)
-    edges = np.reshape(edges, [-1, num_atoms ** 2])
+
+    if len(edges.shape) == 3:
+        edges = np.reshape(edges, [-1, num_atoms ** 2])
+    else:
+        B, T = edges.shape[:2]
+        edges = np.reshape(edges, [B, T, num_atoms ** 2])
+
     edges = np.array((edges + 1) / 2, dtype=np.int64)
 
     feat = torch.FloatTensor(feat)
     edges = torch.LongTensor(edges)
 
-    edges = edges[:, off_diag_idx]
+    if len(edges.shape) == 2:
+        edges = edges[:, off_diag_idx]
+    else:
+        edges = edges[:, :, off_diag_idx]
 
     if temperature is not None:
         dataset = TensorDataset(feat, edges, temperature)
