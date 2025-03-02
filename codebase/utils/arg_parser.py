@@ -76,14 +76,6 @@ def parse_args():
         help="Number of different edge-types to model",
     )
 
-    ### test-time compute scaling ###
-    parser.add_argument(
-        "--encoder_steps",
-        type=int,
-        default=0,
-        help="Number of steps to run encoder for test-time compute.",
-    )
-
     ########### Different variants for variational distribution q ###############
     parser.add_argument(
         "--dont_use_encoder",

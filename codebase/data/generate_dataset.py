@@ -16,6 +16,9 @@ def parse_args():
         "--simulation", type=str, default="springs", help="What simulation to generate."
     )
     parser.add_argument(
+        "--dynamic", action="store_true", default=False, help="Use a time-varying causal graph."
+    )
+    parser.add_argument(
         "--num-train",
         type=int,
         default=50000,
@@ -157,7 +160,8 @@ def generate_dataset(num_sims, length, sample_freq, sampled_sims=None):
             influencer=args.influencer_particle,
             uninfluenced=args.uninfluenced_particle,
             confounder=args.confounder,
-            edges=edges
+            edges=edges,
+            dynamic_edges=args.dynamic,
         )
         if i % 100 == 0:
             print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
@@ -232,6 +236,9 @@ if __name__ == "__main__":
 
     if args.confounder:
         suffix += "_conf"
+
+    if args.dynamic:
+        suffix += "_dynamic"
 
     if args.temperature != 0.1:
         suffix += "_inter" + str(args.temperature)

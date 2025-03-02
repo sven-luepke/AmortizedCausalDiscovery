@@ -131,7 +131,7 @@ def edge_accuracy(preds, target, binary=True):
 
 
 def calc_auroc(pred_edges, GT_edges):
-    pred_edges = 1 - pred_edges[:, :, 0]
+    pred_edges = 1 - pred_edges[:, :, :, 0]
     return roc_auc_score(
         GT_edges.cpu().detach().flatten(),
         pred_edges.cpu().detach().flatten(),  # [:, :, 1]

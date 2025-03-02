@@ -90,44 +90,22 @@ class TransformerEncoder(Encoder):
         self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
 
-        self.encoder_steps = args.encoder_steps
-        if self.encoder_steps > 0:
-            self.adapter = nn.Linear(n_hid * 2, n_hid, bias=False)
-            self.ln = nn.LayerNorm(n_hid)
 
     def forward(self, inputs, rel_rec, rel_send):
         # Input shape: [num_sims, num_atoms, num_timesteps, num_dims]
 
         x = self.in_proj(inputs)
         B, N, T, D = x.shape
-        #x = x.reshape(-1, T, D)
-        #x = self.pe(x)
-        #x = x.reshape(B, N, T, D)
+        x = x.reshape(-1, T, D)
+        x = self.pe(x)
+        x = x.reshape(B, N, T, D)
 
-        # test time compute scaling
-        if self.encoder_steps > 0:
-            x = self.cross_transformer_0(x)
-            
-            if self.training:
-                import random
-                # TODO: sample step count as in the paper
-                step_count = random.randint(1, self.encoder_steps)
-            else:
-                step_count = self.encoder_steps
+        x = self.cross_transformer_0(x)
+        x = self.cross_transformer_1(x)
 
-            s = torch.randn_like(x) * 0.65
-            e = x * math.sqrt(D)
-            for _ in range(step_count):
-                s = torch.cat([e, s], dim=-1)
-                s = self.adapter(s)
-                s = self.cross_transformer_1(s)
-                s = self.ln(s)
-                
-        else:
-            x = self.cross_transformer_0(x)
-            x = self.cross_transformer_1(x)
-
-        x = x.mean(dim=2)
+        # x.shape = [batch_size, num_atoms, num_timesteps, num_dims]
+        x = x.permute(0, 2, 1, 3).reshape(-1, N, D)
+        #x = x.mean(dim=2)
         #x = inputs.view(inputs.size(0), inputs.size(1), -1)
         # New shape: [num_sims, num_atoms, num_timesteps*num_dims]
 
@@ -149,4 +127,7 @@ class TransformerEncoder(Encoder):
             x = self.mlp4(x)
 
         x = self.fc_out(x)
+
+        # reshape batch sample back to time steps
+        x = x.reshape(B, T, x.shape[-2], x.shape[-1])
         return x

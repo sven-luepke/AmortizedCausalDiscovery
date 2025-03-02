@@ -14,8 +14,12 @@ pip list
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
 
-python -u -m train --suffix _springs5 --epochs=128 --encoder=transformer --encoder_steps=0 --lr=1e-4
-python -u -m train --suffix _springs5 --epochs=128 --encoder=transformer --encoder_steps=8 --lr=1e-4
+python -m data.generate_dataset --dynamic
+python -m train --suffix _springs5_dynamic --epochs=500 --encoder=transformer --lr=1e-4
+python -m train --suffix _springs5_dynamic --epochs=500 --encoder=mlp --lr=1e-4
+
+#python -u -m train --suffix _springs5 --epochs=128 --encoder=transformer --encoder_steps=0 --lr=1e-4
+#python -u -m train --suffix _springs5 --epochs=128 --encoder=transformer --encoder_steps=8 --lr=1e-4
 
 # TODO: transformer encoder from the amortized inference paper
 #python -u -m train --suffix _springs5 --epochs=100 --encoder=transformer

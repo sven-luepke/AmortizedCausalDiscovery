@@ -146,6 +146,7 @@ def test(encoder, decoder, epoch):
 
             data_encoder = data[:, :, : args.timesteps, :].contiguous()
             data_decoder = data[:, :, args.timesteps : -1, :].contiguous()
+            relations = relations[:, :args.timesteps].contiguous()
 
             losses, _, _, _, = forward_pass_and_eval.forward_pass_and_eval(
                 args,
