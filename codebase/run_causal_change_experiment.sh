@@ -13,7 +13,6 @@ pip install pylint==3.2.7 seaborn==0.13.2
 pip list
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
-
 python -m data.generate_dataset --dynamic
 python -m train --suffix _springs5_dynamic --epochs=500 --encoder=transformer --lr=1e-4
 python -m train --suffix _springs5_dynamic --epochs=500 --encoder=mlp --lr=1e-4
