@@ -44,6 +44,18 @@ def gumbel_softmax_sample(logits, tau=1, eps=1e-10):
     y = logits + Variable(gumbel_noise)
     return my_softmax(y / tau, axis=-1)
 
+def gumbel_softmax_hard(logits):
+    y_soft = my_softmax(logits, -1)
+    shape = logits.size()
+    _, k = y_soft.data.max(-1)
+    # this bit is based on
+    # https://discuss.pytorch.org/t/stop-gradients-for-st-gumbel-softmax/530/5
+    y_hard = torch.zeros(*shape)
+    if y_soft.is_cuda:
+        y_hard = y_hard.cuda()
+    y_hard = y_hard.zero_().scatter_(-1, k.view(shape[:-1] + (1,)), 1.0)
+    return y_hard
+
 
 def gumbel_softmax(logits, tau=1, hard=False, eps=1e-10):
     """
@@ -109,7 +121,7 @@ def kl_categorical_uniform(
     if add_const:
         const = np.log(num_edge_types)
         kl_div += const
-    return kl_div.sum() / (num_atoms * preds.size(0))
+    return kl_div.sum() / (num_atoms * preds.size(0) * preds.size(1))
 
 
 def nll_gaussian(preds, target, variance, add_const=False):
@@ -127,7 +139,7 @@ def edge_accuracy(preds, target, binary=True):
     if binary:
         preds = (preds >= 1).long()
     correct = preds.float().data.eq(target.float().data.view_as(preds)).cpu().sum()
-    return np.float32(correct) / (target.size(0) * target.size(1))
+    return np.float32(correct) / (target.size(0) * target.size(1) * target.size(2))
 
 
 def calc_auroc(pred_edges, GT_edges):

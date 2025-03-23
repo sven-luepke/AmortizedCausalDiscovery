@@ -151,7 +151,7 @@ class SpringSim(object):
                 spring_prob=spring_prob,
             )
 
-        edge_switch = np.random.randint(10, T - 10)
+        edge_switch = np.random.randint(500, 5000 - 500)
 
         # Initialize location and velocity
         loc = np.zeros((T_save, 2, n))

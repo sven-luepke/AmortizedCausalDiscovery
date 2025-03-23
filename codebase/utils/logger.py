@@ -153,6 +153,8 @@ class Logger:
             plt.xlabel("epoch")
             plt.ylabel("loss")
             plt.legend(loc="upper right")
+            if "mse" in i:
+                plt.yscale("log")
 
             # save image
             plt.savefig(os.path.join(self.args.log_path, i + ".png"))
