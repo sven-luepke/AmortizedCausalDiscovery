@@ -13,14 +13,8 @@ class CrossTransformerLayer(nn.Module):
             nhead=nhead,
             dim_feedforward=dim_feedforward,
             activation="gelu",
-            batch_first=True
-        )
-        self.temporal_transformer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            activation="gelu",
-            batch_first=True
+            batch_first=True,
+            norm_first=True,
         )
 
     def forward(self, x):
@@ -28,41 +22,15 @@ class CrossTransformerLayer(nn.Module):
         B, N, T, D = x.shape
 
         # covariate transformer
-        x = x.permute(0, 2, 1, 3).reshape(-1, N, D)
+        x = x.reshape(B, N * T, D)
         x = self.covariate_transformer(x)
-        x = x.reshape(B, T, N, D).permute(0, 2, 1, 3)
-
-        # temporal transformer
-        x = x.reshape(-1, T, D)
-        x = self.temporal_transformer(x)
-        x = x.reshape(B, N, T, D)
+        x = x.reshape(B, T, N, D)
 
         return x
 
 import torch
 from model.modules import *
 from model.Encoder import Encoder
-
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model: int, dropout: float, max_len: int = 5000):
-        super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
-        
-        # Create positional encoding matrix with shape (max_len, d_model)
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2, dtype=torch.float32) *
-                             (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)  # shape becomes (1, max_len, d_model)
-        
-        # Register pe as a buffer so it moves with the model's device.
-        self.register_buffer("pe", pe)
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.pe[:, :x.size(1)]
-        return self.dropout(x)
 
 
 class TransformerEncoder(Encoder):
@@ -85,10 +53,14 @@ class TransformerEncoder(Encoder):
         self.init_weights()
 
         self.in_proj = nn.Linear(n_in, n_hid)
-        self.pe = PositionalEncoding(n_hid, dropout=0.1)
+        self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
 
         self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
+
+        self.switch_layer = nn.Linear(n_hid, 1)
+
+        self.layer_norm = nn.LayerNorm(n_hid)
 
 
     def forward(self, inputs, rel_rec, rel_send):
@@ -96,19 +68,25 @@ class TransformerEncoder(Encoder):
 
         x = self.in_proj(inputs)
         B, N, T, D = x.shape
-        x = x.reshape(-1, T, D)
-        x = self.pe(x)
-        x = x.reshape(B, N, T, D)
+        x = x + self.pe
 
         x = self.cross_transformer_0(x)
         x = self.cross_transformer_1(x)
 
+        x = torch.cumsum(x, dim=2)
+
+        x = x.reshape(-1, T, D)
+        x = self.layer_norm(x)
+        x = x.reshape(B, N, T, D)
+
         # x.shape = [batch_size, num_atoms, num_timesteps, num_dims]
         x = x.permute(0, 2, 1, 3).reshape(-1, N, D)
-        #x = x.mean(dim=2)
         #x = inputs.view(inputs.size(0), inputs.size(1), -1)
         # New shape: [num_sims, num_atoms, num_timesteps*num_dims]
 
+        y = x.reshape(B, T, x.shape[-2], x.shape[-1])
+        y = y.mean(dim=(2,))
+        
         #x = self.mlp1(x)  # 2-layer ELU net per node
 
         x = self.node2edge(x, rel_rec, rel_send)
@@ -130,4 +108,5 @@ class TransformerEncoder(Encoder):
 
         # reshape batch sample back to time steps
         x = x.reshape(B, T, x.shape[-2], x.shape[-1])
-        return x
+        factor_logits = self.switch_layer(y)
+        return x, factor_logits

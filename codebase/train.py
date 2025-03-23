@@ -16,6 +16,8 @@ from model import utils, model_loader
 def train():
     best_val_loss = np.inf
     best_epoch = 0
+    reg_weight = 100
+    reg_weight = 4000
 
     for epoch in range(args.epochs):
         t_epoch = time.time()
@@ -26,8 +28,24 @@ def train():
             data, relations, temperatures = data_loader.unpack_batches(args, minibatch)
 
             optimizer.zero_grad()
+            # if epoch == 16:
+            #     reg_weight = 500
+            # if epoch == 24:
+            #     reg_weight = 1000
+            # if epoch == 32:
+            #     reg_weight = 1500
+            # if epoch == 40:
+            #     reg_weight = 2000
+            # if epoch == 48:
+            #     reg_weight = 3000
+            # if epoch == 56:
+            #     reg_weight = 4000
+            # if epoch == 64:
+            #     reg_weight = 5000
+            # if epoch == 72:
+            #     reg_weight = 6000
 
-            losses, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
+            losses, _, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -39,6 +57,7 @@ def train():
                 edge_probs=edge_probs,
                 log_prior=log_prior,
                 temperatures=temperatures,
+                reg_weight=reg_weight
             )
 
             loss = losses["loss"]
@@ -94,7 +113,7 @@ def val(epoch):
         data, relations, temperatures = data_loader.unpack_batches(args, minibatch)
 
         with torch.no_grad():
-            losses, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
+            losses, _, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -148,7 +167,7 @@ def test(encoder, decoder, epoch):
             data_decoder = data[:, :, args.timesteps : -1, :].contiguous()
             relations = relations[:, :args.timesteps].contiguous()
 
-            losses, _, _, _, = forward_pass_and_eval.forward_pass_and_eval(
+            losses, _, _, edges, factors = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -164,6 +183,44 @@ def test(encoder, decoder, epoch):
                 testing=True,
                 temperatures=temperatures,
             )
+
+            if batch_idx == 0:
+                ground_truth_edges = relations
+                predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
+
+                batch_size = ground_truth_edges.size(0)
+                for sample_index in range(batch_size):
+                    # Convert tensor to numpy arrays (detach if needed)
+                    sample_ground_truth_edges = ground_truth_edges[sample_index].detach().cpu().numpy()
+                    sample_predicted_edges = predicted_edges[sample_index].detach().cpu().numpy()
+
+                    # Create a figure with two subplots
+                    fig, axes = plt.subplots(1, 2, figsize=(10, 10))
+                    
+                    # Plot ground truth edges
+                    axes[0].imshow(sample_ground_truth_edges, cmap='gray', interpolation='nearest')
+                    axes[0].set_title("Ground Truth Edges")
+                    axes[0].axis('off')
+                    
+                    # Plot predicted edges
+                    axes[1].imshow(sample_predicted_edges, cmap='gray', interpolation='nearest')
+                    axes[1].set_title("Predicted Edges")
+                    axes[1].axis('off')
+                    
+                    # Save the plot into a file specific for the sample
+                    plt.tight_layout()
+                    plt.savefig(f"sample_{sample_index}_grid.png")
+                    plt.close(fig)
+
+                    # Optionally print the arrays to console
+                    print("Ground truth edges:")
+                    print(sample_ground_truth_edges)
+                    print("Predicted edges:")
+                    print(sample_predicted_edges)
+                    print("Factors:")
+                    print(factors[sample_index])
+                    print("-----------------")
+            
 
         test_losses = utils.append_losses(test_losses, losses)
 

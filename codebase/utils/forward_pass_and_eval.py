@@ -74,6 +74,30 @@ def test_time_adapt(
 
     return tta_logits
 
+def sample_binary_concrete(logits, hard):
+    # Sample uniform random noise
+    uniform_noise = torch.rand_like(logits)
+    # Compute Gumbel noise; add a small constant for numerical stability
+    gumbel_noise = -torch.log(-torch.log(uniform_noise + 1e-10) + 1e-10)
+    
+    # Add noise to the logits and divide by the temperature
+    noisy_logits = (logits + gumbel_noise)# / temperature
+    # Apply sigmoid to get a "soft" binary sample in [0,1]
+    soft_sample = torch.sigmoid(noisy_logits)
+    
+    # Optionally, convert to a hard binary sample using a threshold of 0.5
+    hard_sample = (soft_sample > 0.5).float()
+    # Use the straight-through estimator: forward pass uses hard_sample but backward uses soft_sample
+    sample = soft_sample + (hard_sample - soft_sample).detach()
+    
+    if hard:
+        return hard_sample
+    return sample
+
+def compute_logits(logits: torch.Tensor, factor_logits: torch.Tensor, hard: bool):
+    factors = sample_binary_concrete(factor_logits, hard)
+    return logits, factors
+
 
 def forward_pass_and_eval(
     args,
@@ -89,7 +113,8 @@ def forward_pass_and_eval(
     edge_probs=None,
     testing=False,
     log_prior=None,
-    temperatures=None
+    temperatures=None,
+    reg_weight=1,
 ):
     start = time.time()
     losses = defaultdict(lambda: torch.zeros((), device=args.device.type))
@@ -164,7 +189,18 @@ def forward_pass_and_eval(
             inferred_width *= 2 * cmax
         else:
             ## model only the edges
-            logits = encoder(data_encoder, rel_rec, rel_send)
+            logits, factor_logits = encoder(data_encoder, rel_rec, rel_send)
+            #print(logits.shape, factors.shape)
+            # logit_list = [logits[:, 0]]
+            # for step in range(1, logits.shape[1]):
+            #     fac = factors[:, step].unsqueeze(-1)
+            #     l = (logits[:, step] * fac + logit_list[-1] * (1 - fac))
+            #     logit_list.append(l)
+            _hard = not encoder.training
+            logits, factors = compute_logits(logits, factor_logits, _hard)
+            factors_soft = torch.sigmoid(factor_logits)
+            #print(factors.sum())
+            
     else:
         logits = edge_probs.unsqueeze(0).repeat(data_encoder.shape[0], 1, 1)
 
@@ -181,7 +217,19 @@ def forward_pass_and_eval(
             log_prior,
         )
 
-    edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+    
+
+    T = logits.size(1)
+    out = [logits[:, 0]]
+    for t in range(1, T):
+        fac = factors[:, t].unsqueeze(-1)
+        out.append(logits[:, t] * fac + out[-1] * (1 - fac))   
+    logits = torch.stack(out, dim=1)
+
+    if encoder.training:
+        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+    else:
+        edges = utils.gumbel_softmax_hard(logits)
     prob = utils.my_softmax(logits, -1)
 
     target = data_decoder[:, :, 1:, :]
@@ -261,14 +309,28 @@ def forward_pass_and_eval(
     losses["acc"] = utils.edge_accuracy(logits, relations)
     losses["auroc"] = utils.calc_auroc(prob, relations)
 
+    # temporal kl divergence
+    edge_probs = prob[:, :, :, 1]  # TODO: check if this is correct
+    edge_probs_prev = edge_probs[:, :-1]
+    edge_probs_next = edge_probs[:, 1:]
+    eps = 1e-6
+    p = edge_probs_prev.clamp(min=eps, max=1 - eps)
+    q = edge_probs_next.clamp(min=eps, max=1 - eps)
+    # symmetrize
+    kl = p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+    p, q = q, p
+    kl += p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+    #losses["loss_kl_temporal"] = kl.mean() * 1000000
+    losses["factor_loss"] = factors_soft.sum() / factors_soft.shape[0]
+
     ### output losses ###
     losses["loss_nll"] = utils.nll_gaussian(
         output, target, args.var
-    ) 
+    )
 
     losses["loss_mse"] = F.mse_loss(output, target)
 
-    total_loss = losses["loss_nll"] + losses["loss_kl"]
+    total_loss = losses["loss_nll"] + losses["loss_kl"] + losses["factor_loss"] * reg_weight
     total_loss += args.teacher_forcing * losses["mse_unobserved"]
     if args.global_temp:
         total_loss += losses['loss_kl_temp']
@@ -276,4 +338,4 @@ def forward_pass_and_eval(
 
     losses["inference time"] = time.time() - start
 
-    return losses, output, unobserved, edges
+    return losses, output, unobserved, edges, factors
