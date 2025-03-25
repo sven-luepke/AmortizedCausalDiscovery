@@ -184,7 +184,7 @@ def test(encoder, decoder, epoch):
                 temperatures=temperatures,
             )
 
-            if batch_idx == 0:
+            if batch_idx < 4:
                 ground_truth_edges = relations
                 predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
 
@@ -209,7 +209,9 @@ def test(encoder, decoder, epoch):
                     
                     # Save the plot into a file specific for the sample
                     plt.tight_layout()
-                    plt.savefig(f"sample_{sample_index}_grid.png")
+                    import os
+                    out_path = os.path.join(args.plotdir, f"sample_{batch_idx}_{sample_index}_grid.png")
+                    plt.savefig(out_path)
                     plt.close(fig)
 
                     # Optionally print the arrays to console

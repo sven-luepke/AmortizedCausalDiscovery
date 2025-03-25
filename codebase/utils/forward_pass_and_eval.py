@@ -188,18 +188,14 @@ def forward_pass_and_eval(
             inferred_mean *= 2 * cmax 
             inferred_width *= 2 * cmax
         else:
-            ## model only the edges
-            logits, factor_logits = encoder(data_encoder, rel_rec, rel_send)
-            #print(logits.shape, factors.shape)
-            # logit_list = [logits[:, 0]]
-            # for step in range(1, logits.shape[1]):
-            #     fac = factors[:, step].unsqueeze(-1)
-            #     l = (logits[:, step] * fac + logit_list[-1] * (1 - fac))
-            #     logit_list.append(l)
-            _hard = not encoder.training
-            logits, factors = compute_logits(logits, factor_logits, _hard)
-            factors_soft = torch.sigmoid(factor_logits)
-            #print(factors.sum())
+            if args.encoder == "transformer":
+                ## model only the edges
+                logits, factor_logits = encoder(data_encoder, rel_rec, rel_send)
+                _hard = not encoder.training
+                logits, factors = compute_logits(logits, factor_logits, _hard)
+                factors_soft = torch.sigmoid(factor_logits)
+            else:
+                logits = encoder(data_encoder, rel_rec, rel_send)
             
     else:
         logits = edge_probs.unsqueeze(0).repeat(data_encoder.shape[0], 1, 1)
@@ -218,18 +214,21 @@ def forward_pass_and_eval(
         )
 
     
+    if args.encoder == "transformer":
+        T = logits.size(1)
+        out = [logits[:, 0]]
+        for t in range(1, T):
+            fac = factors[:, t].unsqueeze(-1)
+            out.append(logits[:, t] * fac + out[-1] * (1 - fac))   
+        logits = torch.stack(out, dim=1)
 
-    T = logits.size(1)
-    out = [logits[:, 0]]
-    for t in range(1, T):
-        fac = factors[:, t].unsqueeze(-1)
-        out.append(logits[:, t] * fac + out[-1] * (1 - fac))   
-    logits = torch.stack(out, dim=1)
-
-    if encoder.training:
-        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        if encoder.training:
+            edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        else:
+            edges = utils.gumbel_softmax_hard(logits)
     else:
-        edges = utils.gumbel_softmax_hard(logits)
+        edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+
     prob = utils.my_softmax(logits, -1)
 
     target = data_decoder[:, :, 1:, :]
@@ -309,19 +308,22 @@ def forward_pass_and_eval(
     losses["acc"] = utils.edge_accuracy(logits, relations)
     losses["auroc"] = utils.calc_auroc(prob, relations)
 
+    if args.encoder == "transformer":
     # temporal kl divergence
-    edge_probs = prob[:, :, :, 1]  # TODO: check if this is correct
-    edge_probs_prev = edge_probs[:, :-1]
-    edge_probs_next = edge_probs[:, 1:]
-    eps = 1e-6
-    p = edge_probs_prev.clamp(min=eps, max=1 - eps)
-    q = edge_probs_next.clamp(min=eps, max=1 - eps)
-    # symmetrize
-    kl = p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
-    p, q = q, p
-    kl += p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
-    #losses["loss_kl_temporal"] = kl.mean() * 1000000
-    losses["factor_loss"] = factors_soft.sum() / factors_soft.shape[0]
+        edge_probs = prob[:, :, :, 1]  # TODO: check if this is correct
+        edge_probs_prev = edge_probs[:, :-1]
+        edge_probs_next = edge_probs[:, 1:]
+        eps = 1e-6
+        p = edge_probs_prev.clamp(min=eps, max=1 - eps)
+        q = edge_probs_next.clamp(min=eps, max=1 - eps)
+        # symmetrize
+        kl = p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+        p, q = q, p
+        kl += p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+        #losses["loss_kl_temporal"] = kl.mean() * 1000000
+        losses["factor_loss"] = factors_soft.sum() / factors_soft.shape[0]
+    else:
+        losses["factor_loss"] = 0
 
     ### output losses ###
     losses["loss_nll"] = utils.nll_gaussian(
