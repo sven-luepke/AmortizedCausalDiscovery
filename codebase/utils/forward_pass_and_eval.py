@@ -9,7 +9,7 @@ import numpy as np
 
 from model.modules import *
 from model import utils, utils_unobserved
-
+from utils.metrics import segmentation_covering_f1
 
 def test_time_adapt(
     args,
@@ -307,6 +307,12 @@ def forward_pass_and_eval(
     losses["loss_kl"] = utils.kl_latent(args, prob, log_prior, predicted_atoms)
     losses["acc"] = utils.edge_accuracy(logits, relations)
     losses["auroc"] = utils.calc_auroc(prob, relations)
+
+    precision, recall, f1_score, accuracy = segmentation_covering_f1(edges[:, :, :, 1], relations)
+    losses["segmentation_precision"] = precision
+    losses["segmentation_recall"] = recall
+    losses["segmentation_f1"] = f1_score
+    losses["segmentation_accuracy"] = accuracy
 
     if args.encoder == "transformer":
     # temporal kl divergence

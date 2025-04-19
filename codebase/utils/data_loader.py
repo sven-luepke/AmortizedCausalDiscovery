@@ -103,6 +103,47 @@ def data_preparation(
     return dataset
 
 
+def compute_data_filter_mask(data):
+    diffs = np.diff(data, axis=1)  # shape: (1000, 98, 5, 5)
+    change_flags = np.any(diffs != 0, axis=(2, 3))  # shape: (1000, 98)
+    # For each series, the change points (time indices) are:
+    change_points = [np.where(change_flags[i])[0] + 1 for i in range(data.shape[0])]
+    #change_points = np.array(change_points).flatten()
+
+    #print(change_points)
+    #print(change_points.min())
+    #print(change_points.max())
+    # Define threshold: e.g., change must occur after time step 10 and before time step 89
+    # (since 99 time steps, last index is 98, so we want at least 10 time steps at the end)
+    d = 20
+    lower_threshold = d
+    upper_threshold = 49 - d  # 49 - 10 = 39
+
+    bin_size = 0.2
+    bin = 1
+    lower_threshold = int(49 * bin_size * (bin))
+    upper_threshold = int(49 * bin_size * (1 + bin))
+
+    # Build a mask to identify valid time series
+    valid_series_mask = []
+    for cp in change_points:
+        if cp.size == 0:
+            # Option: if there is no change at all, decide if you want to keep or remove it.
+            valid_series_mask.append(False)
+        else:
+            first_cp = cp[0]
+            last_cp = cp[-1]
+            if first_cp >= lower_threshold and last_cp < upper_threshold:
+                valid_series_mask.append(True)
+            else:
+                valid_series_mask.append(False)
+
+    valid_series_mask = np.array(valid_series_mask)
+
+    # Filter the data
+    #filtered_data = data[valid_series_mask]
+    return valid_series_mask
+
 def load_springs_data(args, batch_size=1, suffix="", datadir="data"):
     """Based on https://github.com/ethanfetaya/NRI (MIT License)."""
 
@@ -118,6 +159,29 @@ def load_springs_data(args, batch_size=1, suffix="", datadir="data"):
     loc_test = np.load(os.path.join(datadir, "loc_test" + suffix + ".npy"))
     vel_test = np.load(os.path.join(datadir, "vel_test" + suffix + ".npy"))
     edges_test = np.load(os.path.join(datadir, "edges_test" + suffix + ".npy"))
+
+    # Compute a mask to filter test data based on change points
+    #mask = compute_data_filter_mask(edges_test)
+
+    #print("Number of samples in bin")
+    #print(compute_data_filter_mask(edges_train).sum())
+    # Print shapes before filtering
+    # print("before")
+    # print(loc_test.shape)
+    # print(vel_test.shape)
+    # print(edges_test.shape)
+    
+    # Apply the mask to filter the test data
+    # Only keep samples where changes occur within the specified thresholds
+    #loc_test = loc_test[mask]
+    #vel_test = vel_test[mask]
+    #edges_test = edges_test[mask]
+    
+    # Print shapes after filtering
+    # print("after")
+    # print(loc_test.shape)
+    # print(vel_test.shape)
+    # print(edges_test.shape)
 
     if args.load_temperatures:
         temperatures_train, temperatures_valid, temperatures_test = load_temperatures(
