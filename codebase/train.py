@@ -16,7 +16,6 @@ from model import utils, model_loader
 def train():
     best_val_loss = np.inf
     best_epoch = 0
-    reg_weight = 100
     reg_weight = 4000
 
     for epoch in range(args.epochs):
@@ -28,22 +27,6 @@ def train():
             data, relations, temperatures = data_loader.unpack_batches(args, minibatch)
 
             optimizer.zero_grad()
-            # if epoch == 16:
-            #     reg_weight = 500
-            # if epoch == 24:
-            #     reg_weight = 1000
-            # if epoch == 32:
-            #     reg_weight = 1500
-            # if epoch == 40:
-            #     reg_weight = 2000
-            # if epoch == 48:
-            #     reg_weight = 3000
-            # if epoch == 56:
-            #     reg_weight = 4000
-            # if epoch == 64:
-            #     reg_weight = 5000
-            # if epoch == 72:
-            #     reg_weight = 6000
 
             losses, _, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
                 args,
@@ -184,7 +167,7 @@ def test(encoder, decoder, epoch):
                 temperatures=temperatures,
             )
 
-            if batch_idx < 4:
+            if batch_idx < 2:
                 ground_truth_edges = relations
                 predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
 
@@ -194,34 +177,67 @@ def test(encoder, decoder, epoch):
                     sample_ground_truth_edges = ground_truth_edges[sample_index].detach().cpu().numpy()
                     sample_predicted_edges = predicted_edges[sample_index].detach().cpu().numpy()
 
-                    # Create a figure with two subplots
-                    fig, axes = plt.subplots(1, 2, figsize=(10, 10))
-                    
-                    # Plot ground truth edges
-                    axes[0].imshow(sample_ground_truth_edges, cmap='gray', interpolation='nearest')
-                    axes[0].set_title("Ground Truth Edges")
-                    axes[0].axis('off')
-                    
-                    # Plot predicted edges
-                    axes[1].imshow(sample_predicted_edges, cmap='gray', interpolation='nearest')
-                    axes[1].set_title("Predicted Edges")
+                    # Calculate the difference map
+                    # 0 = correct prediction
+                    # 1 = false positive (predicted edge not in GT)
+                    # 2 = false negative (GT edge not predicted)
+                    difference_map = np.zeros_like(sample_ground_truth_edges)
+                    difference_map[(sample_predicted_edges == 1) & (sample_ground_truth_edges == 0)] = 1  # FP
+                    difference_map[(sample_predicted_edges == 0) & (sample_ground_truth_edges == 1)] = 2  # FN
+
+                    # Create custom colormap for error map
+                    from matplotlib.colors import ListedColormap
+                    cmap_diff = ListedColormap(['black', 'red', 'blue'])  # 0: correct, 1: FP, 2: FN
+
+                    # Create a figure with three subplots
+                    fig, axes = plt.subplots(1, 3, figsize=(15, 10))
+
+                    # Determine dimensions: rows (height) and columns (width) of the images
+                    num_rows, num_cols = sample_ground_truth_edges.shape
+
+                    # Helper function to add grid lines at every pixel boundary
+                    def add_pixel_grid(ax, num_rows, num_cols):
+                        # Draw horizontal grid lines
+                        for y in range(1, num_rows):
+                            ax.axhline(y - 0.5, color='gray', linestyle='-', linewidth=0.8)
+                        # Draw vertical grid lines
+                        for x in range(1, num_cols):
+                            ax.axvline(x - 0.5, color='gray', linestyle='-', linewidth=0.2)
+
+                    # Ground Truth subplot
+                    axes[0].imshow(1 - sample_ground_truth_edges, cmap='gray', interpolation='nearest')
+                    add_pixel_grid(axes[0], num_rows, num_cols)
+                    axes[0].set_title("Ground Truth", fontsize=20)
+                    axes[0].axis('off')  # Removes the axis labels and ticks
+
+                    # Predicted subplot
+                    axes[1].imshow(1 - sample_predicted_edges, cmap='gray', interpolation='nearest')
+                    add_pixel_grid(axes[1], num_rows, num_cols)
+                    axes[1].set_title("Predicted", fontsize=20)
                     axes[1].axis('off')
-                    
-                    # Save the plot into a file specific for the sample
+
+                    # Error Map subplot
+                    axes[2].imshow(difference_map, cmap=cmap_diff, interpolation='nearest')
+                    add_pixel_grid(axes[2], num_rows, num_cols)
+                    axes[2].set_title("Error Map", fontsize=20)
+                    axes[2].axis('off')
+
+                    # Save the output
                     plt.tight_layout()
                     import os
-                    out_path = os.path.join(args.plotdir, f"sample_{batch_idx}_{sample_index}_grid.png")
+                    out_path = os.path.join(args.plotdir, f"sample_{batch_idx}_{sample_index}_grid_with_diff.png")
                     plt.savefig(out_path)
                     plt.close(fig)
 
+
                     # Optionally print the arrays to console
-                    print("Ground truth edges:")
-                    print(sample_ground_truth_edges)
-                    print("Predicted edges:")
-                    print(sample_predicted_edges)
-                    print("Factors:")
-                    print(factors[sample_index])
-                    print("-----------------")
+                    #print("Ground truth edges:")
+                    ##print(sample_ground_truth_edges)
+                    #print("Predicted edges:")
+                    ##print(sample_predicted_edges)
+                    #print("Factors:")
+                    ##print(factors[sample_index])
+                    #print("-----------------")
             
 
         test_losses = utils.append_losses(test_losses, losses)
@@ -293,13 +309,16 @@ if __name__ == "__main__":
         )
 
     ##Train model
-    try:
-        if args.test_time_adapt:
-            raise KeyboardInterrupt
+    if args.epochs != 0:
+        try:
+            if args.test_time_adapt:
+                raise KeyboardInterrupt
 
-        best_epoch, epoch = train()
+            best_epoch, epoch = train()
 
-    except KeyboardInterrupt:
+        except KeyboardInterrupt:
+            best_epoch, epoch = -1, -1
+    else:
         best_epoch, epoch = -1, -1
 
     print("Optimization Finished!")
