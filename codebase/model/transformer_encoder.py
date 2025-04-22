@@ -17,20 +17,25 @@ class CrossTransformerLayer(nn.Module):
             norm_first=True,
         )
 
-    def forward(self, x):
+    def forward(self, x, cls_token):
         # inputs.shape [batch_size, num_atoms, num_timesteps, num_dims]
         B, N, T, D = x.shape
 
         # covariate transformer
         x = x.reshape(B, N * T, D)
+        cls_token = cls_token.unsqueeze(1)
+        x = torch.cat([x, cls_token], dim=1)
         x = self.covariate_transformer(x)
+        cls_out = x[:, -1, :]
+        x = x[:, :-1, :]
         x = x.reshape(B, T, N, D)
 
-        return x
+        return x, cls_out
 
 import torch
 from model.modules import *
 from model.Encoder import Encoder
+from torch.nn.functional import gumbel_softmax
 
 
 class TransformerEncoder(Encoder):
@@ -54,13 +59,14 @@ class TransformerEncoder(Encoder):
 
         self.in_proj = nn.Linear(n_in, n_hid)
         self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
+        self.cls_token = nn.Parameter(torch.zeros(1, n_hid))
 
         self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
 
-        self.switch_layer = nn.Linear(n_hid, 1)
-
-        self.layer_norm = nn.LayerNorm(n_hid)
+        seq_len = 49
+        self.next_change_index_offsetlayer = nn.Linear(n_hid, seq_len + 1)
+        # last logit is for no change
 
 
     def forward(self, inputs, rel_rec, rel_send):
@@ -70,43 +76,89 @@ class TransformerEncoder(Encoder):
         B, N, T, D = x.shape
         x = x + self.pe
 
-        x = self.cross_transformer_0(x)
-        x = self.cross_transformer_1(x)
+        causal_change_index_mask = torch.zeros(B, T + 1, dtype=torch.float32, device=x.device)
+        max_causal_change_count = 2  # start with 2 causal changes
+        transformer_output = x
 
-        x = torch.cumsum(x, dim=2)
+        causal_graphs = []
 
-        x = x.reshape(-1, T, D)
-        x = self.layer_norm(x)
-        x = x.reshape(B, N, T, D)
+        change_indicator_list = []
 
-        # x.shape = [batch_size, num_atoms, num_timesteps, num_dims]
-        x = x.permute(0, 2, 1, 3).reshape(-1, N, D)
-        #x = inputs.view(inputs.size(0), inputs.size(1), -1)
-        # New shape: [num_sims, num_atoms, num_timesteps*num_dims]
+        for i in range(max_causal_change_count):
+            cls_out = self.cls_token.expand(B, -1)
+            transformer_output, cls_out = self.cross_transformer_0(transformer_output, cls_out)
+            transformer_output, cls_out = self.cross_transformer_1(transformer_output, cls_out)
 
-        y = x.reshape(B, T, x.shape[-2], x.shape[-1])
-        y = y.mean(dim=(2,))
-        
-        #x = self.mlp1(x)  # 2-layer ELU net per node
+            # from cls out predict the next change index
+            next_causal_change_logits = self.next_change_index_offsetlayer(cls_out)
+            if i == max_causal_change_count - 1:
+                # force no change for the last causal change
+                causal_change_index_mask[:, :-1] = -1e9
+            next_causal_change_logits += causal_change_index_mask
+            next_causal_change = gumbel_softmax(next_causal_change_logits, tau=1.0, hard=True)
+            change_indicator_list.append(next_causal_change[:, :-1])
 
-        x = self.node2edge(x, rel_rec, rel_send)
-        x = self.mlp2(x)
-        x_skip = x
+            # update the causal change index mask
+            # to ensure that the next change index larger than the current change index
+            causal_change_index_mask = (
+                next_causal_change.flip(dims=[1]).cumsum(dim=1).flip(dims=[1]) * -1e9
+            )
+            # we always allow no change (last logit)
+            causal_change_index_mask[:, -1] = 0
 
-        if self.factor:
-            x = self.edge2node(x, rel_rec, rel_send)
-            x = self.mlp3(x)
+            # x.shape = [batch_size, num_atoms, num_timesteps, num_dims]
+            x = transformer_output.mean(dim=2)
+            # New shape: [num_sims, num_atoms, num_dims]
+
             x = self.node2edge(x, rel_rec, rel_send)
-            x = torch.cat((x, x_skip), dim=2)  # Skip connection
-            x = self.mlp4(x)
-        else:
-            x = self.mlp3(x)
-            x = torch.cat((x, x_skip), dim=2)  # Skip connection
-            x = self.mlp4(x)
+            x = self.mlp2(x)
+            x_skip = x
 
-        x = self.fc_out(x)
+            if self.factor:
+                x = self.edge2node(x, rel_rec, rel_send)
+                x = self.mlp3(x)
+                x = self.node2edge(x, rel_rec, rel_send)
+                x = torch.cat((x, x_skip), dim=2)  # Skip connection
+                x = self.mlp4(x)
+            else:
+                x = self.mlp3(x)
+                x = torch.cat((x, x_skip), dim=2)  # Skip connection
+                x = self.mlp4(x)
 
-        # reshape batch sample back to time steps
-        x = x.reshape(B, T, x.shape[-2], x.shape[-1])
-        factor_logits = self.switch_layer(y)
-        return x, factor_logits
+            x = self.fc_out(x)
+
+            causal_graphs.append(x.unsqueeze(-1))
+
+        #   causal_graphs           :  (B, E, 2, C)
+        causal_graphs = torch.cat(causal_graphs, dim=-1)
+
+        # one‑hot change indicators
+        phi = torch.stack(change_indicator_list, dim=1)            # (B, C, T)
+        B, C, T = phi.shape
+
+        # cumulative "step function":  step_g[t] = 1  ⇔  change g has happened by t
+        step = torch.cumsum(phi, dim=-1)                           # (B, C, T)
+
+        # build the segment masks
+        remain = torch.ones(B, T, device=phi.device, dtype=phi.dtype)
+        segment_masks = []                                         # list length C
+        for g in range(C):
+            if g < C - 1:
+                # graph g lives UNTIL its own change happens
+                mask_g = remain * (1.0 - step[:, g])               # (B, T)
+                remain = remain * step[:, g]                       # what is left for the next graphs
+            else:
+                # last graph owns the rest
+                mask_g = remain
+            segment_masks.append(mask_g)
+
+        assignment_weights = torch.stack(segment_masks, dim=-1)    # (B, T, C)
+
+        # sanity check – every time‑step should be assigned to exactly one graph
+        assert torch.allclose(assignment_weights.sum(-1), torch.ones_like(remain))
+
+        graphs = torch.einsum('b e f c, b t c -> b t e f',
+                            causal_graphs,
+                            assignment_weights)                   # (B, T, E, F)
+        return graphs
+    
