@@ -28,7 +28,7 @@ class CrossTransformerLayer(nn.Module):
         x = self.covariate_transformer(x)
         cls_out = x[:, -1, :]
         x = x[:, :-1, :]
-        x = x.reshape(B, T, N, D)
+        x = x.reshape(B, N, T,D)
 
         return x, cls_out
 
@@ -61,8 +61,9 @@ class TransformerEncoder(Encoder):
         self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
         self.cls_token = nn.Parameter(torch.zeros(1, n_hid))
 
-        self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
+       # self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
+        self.cross_transformer_2 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
 
         seq_len = 49
         self.next_change_index_offsetlayer = nn.Linear(n_hid, seq_len + 1)
@@ -77,17 +78,20 @@ class TransformerEncoder(Encoder):
         x = x + self.pe
 
         causal_change_index_mask = torch.zeros(B, T + 1, dtype=torch.float32, device=x.device)
-        max_causal_change_count = 2  # start with 2 causal changes
+        max_causal_change_count = 2  # 2 causal changes + 1 no change
         transformer_output = x
 
         causal_graphs = []
 
         change_indicator_list = []
 
+       
+        #transformer_output, cls_out = self.cross_transformer_0(transformer_output, cls_out)
+
         for i in range(max_causal_change_count):
             cls_out = self.cls_token.expand(B, -1)
-            transformer_output, cls_out = self.cross_transformer_0(transformer_output, cls_out)
             transformer_output, cls_out = self.cross_transformer_1(transformer_output, cls_out)
+            transformer_output, cls_out = self.cross_transformer_2(transformer_output, cls_out)
 
             # from cls out predict the next change index
             next_causal_change_logits = self.next_change_index_offsetlayer(cls_out)
@@ -95,6 +99,7 @@ class TransformerEncoder(Encoder):
                 # force no change for the last causal change
                 causal_change_index_mask[:, :-1] = -1e9
             next_causal_change_logits += causal_change_index_mask
+            #next_causal_change_logits[:, -1] += 4  # bias for no change
             next_causal_change = gumbel_softmax(next_causal_change_logits, tau=1.0, hard=True)
             change_indicator_list.append(next_causal_change[:, :-1])
 

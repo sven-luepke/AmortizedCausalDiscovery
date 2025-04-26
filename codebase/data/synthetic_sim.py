@@ -133,7 +133,7 @@ class SpringSim(object):
         uninfluenced=False,
         confounder=False,
         edges=None,
-        dynamic_edges=False,
+        dynamic_edges=0,
     ):
         n = self.n_balls
         assert T % sample_freq == 0
@@ -151,7 +151,13 @@ class SpringSim(object):
                 spring_prob=spring_prob,
             )
 
-        edge_switch = np.random.randint(500, 5000 - 500)
+        edge_switches = []
+        import random
+        num_switches = random.randint(0, dynamic_edges)
+        #num_switches = dynamic_edges
+        for _ in range(num_switches):
+            edge_switch = np.random.randint(sample_freq * 4, 5000 - sample_freq * 4)
+            edge_switches.append(edge_switch)
 
         # Initialize location and velocity
         loc = np.zeros((T_save, 2, n))
@@ -199,7 +205,7 @@ class SpringSim(object):
             # run leapfrog
             for i in range(1, T):
 
-                if i == edge_switch and dynamic_edges:
+                if i in edge_switches:
                     edges = self.get_edges(
                         undirected=undirected,
                         influencer=influencer,

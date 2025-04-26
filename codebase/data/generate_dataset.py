@@ -16,7 +16,10 @@ def parse_args():
         "--simulation", type=str, default="springs", help="What simulation to generate."
     )
     parser.add_argument(
-        "--dynamic", action="store_true", default=False, help="Use a time-varying causal graph."
+        "--dynamic",
+        type=int,
+        default=0,
+        help="Maximum number of causal graph changes.",
     )
     parser.add_argument(
         "--num-train",
@@ -237,8 +240,8 @@ if __name__ == "__main__":
     if args.confounder:
         suffix += "_conf"
 
-    if args.dynamic:
-        suffix += "_dynamic"
+    if args.dynamic != 0:
+        suffix += "_dynamic" + str(args.dynamic)
 
     if args.temperature != 0.1:
         suffix += "_inter" + str(args.temperature)
