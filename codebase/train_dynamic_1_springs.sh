@@ -13,3 +13,4 @@ cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
 
 python -m train --suffix _springs5_dynamic1 --epochs=500 --encoder=transformer
+python -m train --suffix _springs5_dynamic1 --epochs=500 --encoder=mlp
