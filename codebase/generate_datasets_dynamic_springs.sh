@@ -12,4 +12,7 @@
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
 
+python -m data.generate_dataset --dynamic 0
 python -m data.generate_dataset --dynamic 1
+python -m data.generate_dataset --dynamic 2
+python -m data.generate_dataset --dynamic 3
