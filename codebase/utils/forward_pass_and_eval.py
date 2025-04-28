@@ -297,11 +297,11 @@ def forward_pass_and_eval(
     losses["acc"] = utils.edge_accuracy(logits, relations)
     losses["auroc"] = utils.calc_auroc(prob, relations)
 
-    precision, recall, f1_score, accuracy = segmentation_covering_f1(edges[:, :, :, 1], relations)
-    losses["segmentation_precision"] = precision
-    losses["segmentation_recall"] = recall
-    losses["segmentation_f1"] = f1_score
-    losses["segmentation_accuracy"] = accuracy
+    #precision, recall, f1_score, accuracy = segmentation_covering_f1(edges[:, :, :, 1], relations)
+    #losses["segmentation_precision"] = precision
+    #losses["segmentation_recall"] = recall
+    #losses["segmentation_f1"] = f1_score
+    #losses["segmentation_accuracy"] = accuracy
 
     ### output losses ###
     losses["loss_nll"] = utils.nll_gaussian(

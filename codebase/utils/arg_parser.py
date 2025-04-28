@@ -43,6 +43,12 @@ def parse_args():
         metavar="N",
         help="Num steps to predict before re-using teacher forcing.",
     )
+    parser.add_argument(
+        "--dynamic",
+        type=int,
+        default=0,
+        help="Maximum number of causal graph changes.",
+    )
 
     ############## architecture ##############
     parser.add_argument(

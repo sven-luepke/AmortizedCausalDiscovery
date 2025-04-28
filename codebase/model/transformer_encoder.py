@@ -69,6 +69,9 @@ class TransformerEncoder(Encoder):
         self.next_change_index_offsetlayer = nn.Linear(n_hid, seq_len + 1)
         # last logit is for no change
 
+         # N causal changes + 1 no change
+        self.num_causal_changes = args.dynamic + 1
+
 
     def forward(self, inputs, rel_rec, rel_send):
         # Input shape: [num_sims, num_atoms, num_timesteps, num_dims]
@@ -78,14 +81,11 @@ class TransformerEncoder(Encoder):
         x = x + self.pe
 
         causal_change_index_mask = torch.zeros(B, T + 1, dtype=torch.float32, device=x.device)
-        max_causal_change_count = 2  # 2 causal changes + 1 no change
+        max_causal_change_count = self.num_causal_changes 
         transformer_output = x
 
         causal_graphs = []
-
-        change_indicator_list = []
-
-       
+        change_indicator_list = []       
         #transformer_output, cls_out = self.cross_transformer_0(transformer_output, cls_out)
 
         for i in range(max_causal_change_count):

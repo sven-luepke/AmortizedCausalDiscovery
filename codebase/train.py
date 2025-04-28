@@ -167,6 +167,15 @@ def test(encoder, decoder, epoch):
                 temperatures=temperatures,
             )
 
+            import os
+            output_dir = os.path.join(args.log_path, "test_outputs")
+            os.makedirs(output_dir, exist_ok=True)
+            ground_truth_edges = relations
+            predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
+            output_data = torch.stack([ground_truth_edges, predicted_edges], dim=0)
+            output_path = os.path.join(output_dir, f"batch_{batch_idx}.pt")
+            torch.save(output_data, output_path)
+
             if batch_idx < 2:
                 ground_truth_edges = relations
                 predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
@@ -228,16 +237,6 @@ def test(encoder, decoder, epoch):
                     out_path = os.path.join(args.plotdir, f"sample_{batch_idx}_{sample_index}_grid_with_diff.png")
                     plt.savefig(out_path)
                     plt.close(fig)
-
-
-                    # Optionally print the arrays to console
-                    #print("Ground truth edges:")
-                    ##print(sample_ground_truth_edges)
-                    #print("Predicted edges:")
-                    ##print(sample_predicted_edges)
-                    #print("Factors:")
-                    ##print(factors[sample_index])
-                    #print("-----------------")
             
 
         test_losses = utils.append_losses(test_losses, losses)
