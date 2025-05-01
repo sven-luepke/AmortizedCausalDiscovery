@@ -28,3 +28,6 @@ logs/
 journal/
 Session.vim
 *.swo
+
+test_outputs
+test.ipynb
