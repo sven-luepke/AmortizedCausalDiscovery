@@ -240,8 +240,8 @@ if __name__ == "__main__":
     if args.confounder:
         suffix += "_conf"
 
-    if args.dynamic != 0:
-        suffix += "_dynamic" + str(args.dynamic)
+    #if args.dynamic != 0:
+    suffix += "_dynamic" + str(args.dynamic)
 
     if args.temperature != 0.1:
         suffix += "_inter" + str(args.temperature)
