@@ -12,11 +12,11 @@
 cd ~/workspace/AmortizedCausalDiscovery/codebase
 pwd
 
-#python -m train --suffix _springs5_dynamic1 --dynamic 1 --epochs=500 --encoder=transformer
-#python -m train --suffix _springs5_dynamic1 --dynamic 1 --epochs=500 --encoder=mlp
-#python -m train --suffix _springs5_dynamic2 --dynamic 2 --epochs=500 --encoder=transformer
-#python -m train --suffix _springs5_dynamic2 --dynamic 2 --epochs=500 --encoder=mlp
-#python -m train --suffix _springs5_dynamic3 --dynamic 3 --epochs=500 --encoder=transformer
-#python -m train --suffix _springs5_dynamic3 --dynamic 3 --epochs=500 --encoder=mlp
-python -m train --suffix _springs5_dynamic0 --dynamic 0 --epochs=500 --encoder=transformer
-python -m train --suffix _springs5_dynamic0 --dynamic 0 --epochs=500 --encoder=mlp
+python -m train --suffix _springs5_dynamic1 --dynamic 1 --epochs=500 --encoder=transformer
+python -m train --suffix _springs5_dynamic1 --dynamic 1 --epochs=500 --encoder=mlp
+python -m train --suffix _springs5_dynamic2 --dynamic 2 --epochs=500 --encoder=transformer
+python -m train --suffix _springs5_dynamic2 --dynamic 2 --epochs=500 --encoder=mlp
+python -m train --suffix _springs5_dynamic3 --dynamic 3 --epochs=500 --encoder=transformer
+python -m train --suffix _springs5_dynamic3 --dynamic 3 --epochs=500 --encoder=mlp
+#python -m train --suffix _springs5_dynamic0 --dynamic 0 --epochs=500 --encoder=transformer
+#python -m train --suffix _springs5_dynamic0 --dynamic 0 --epochs=500 --encoder=mlp

@@ -191,6 +191,12 @@ def forward_pass_and_eval(
             if args.encoder == "transformer":
                 ## model only the edges
                 logits = encoder(data_encoder, rel_rec, rel_send)
+            elif args.encoder == "transformer_old":
+                ## model only the edges
+                logits, factor_logits = encoder(data_encoder, rel_rec, rel_send)
+                _hard = not encoder.training
+                logits, factors = compute_logits(logits, factor_logits, _hard)
+                factors_soft = torch.sigmoid(factor_logits)
             else:
                 logits = encoder(data_encoder, rel_rec, rel_send)
             
@@ -210,11 +216,23 @@ def forward_pass_and_eval(
             log_prior,
         )
     
-    if not encoder.training:
+    if not encoder.training and args.encoder == "transformer":
         # Hard deterministic sample during evaluation
         _, k = logits.max(-1)
         edges = torch.zeros_like(logits)
         edges = edges.scatter_(-1, k.unsqueeze(-1), 1.0)
+    elif args.encoder == "transformer_old":
+        T = logits.size(1)
+        out = [logits[:, 0]]
+        for t in range(1, T):
+            fac = factors[:, t].unsqueeze(-1)
+            out.append(logits[:, t] * fac + out[-1] * (1 - fac))   
+        logits = torch.stack(out, dim=1)
+
+        if encoder.training:
+            edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
+        else:
+            edges = utils.gumbel_softmax_hard(logits)
     else:
         edges = utils.gumbel_softmax(logits, tau=args.temp, hard=hard)
 
@@ -303,6 +321,23 @@ def forward_pass_and_eval(
     #losses["segmentation_f1"] = f1_score
     #losses["segmentation_accuracy"] = accuracy
 
+    if args.encoder == "transformer_old":
+        # temporal kl divergence
+        edge_probs = prob[:, :, :, 1]  # TODO: check if this is correct
+        edge_probs_prev = edge_probs[:, :-1]
+        edge_probs_next = edge_probs[:, 1:]
+        eps = 1e-6
+        p = edge_probs_prev.clamp(min=eps, max=1 - eps)
+        q = edge_probs_next.clamp(min=eps, max=1 - eps)
+        # symmetrize
+        kl = p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+        p, q = q, p
+        kl += p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+        #losses["loss_kl_temporal"] = kl.mean() * 1000000
+        losses["factor_loss"] = factors_soft.sum() / factors_soft.shape[0]
+    else:
+        losses["factor_loss"] = 0
+
     ### output losses ###
     losses["loss_nll"] = utils.nll_gaussian(
         output, target, args.var
@@ -310,7 +345,7 @@ def forward_pass_and_eval(
 
     losses["loss_mse"] = F.mse_loss(output, target)
 
-    total_loss = losses["loss_nll"] + losses["loss_kl"]
+    total_loss = losses["loss_nll"] + losses["loss_kl"] + losses["factor_loss"] * reg_weight
     total_loss += args.teacher_forcing * losses["mse_unobserved"]
     if args.global_temp:
         total_loss += losses['loss_kl_temp']

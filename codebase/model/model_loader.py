@@ -9,7 +9,7 @@ from model.CNNEncoder import CNNEncoder
 from model.MLPEncoderUnobserved import MLPEncoderUnobserved
 from model.EncoderGlobalTemp import CNNEncoderGlobalTemp
 from model.transformer_encoder import TransformerEncoder
-
+from model.transfomer_encoder_v1 import TransformerEncoderOld
 from model.MLPDecoder import MLPDecoder
 from model.RNNDecoder import RNNDecoder
 from model.SimulationDecoder import SimulationDecoder
@@ -67,6 +67,15 @@ def load_encoder(args):
             )
         elif args.encoder == "transformer":
             encoder = TransformerEncoder(
+                args,
+                args.dims,
+                args.encoder_hidden,
+                args.edge_types,
+                do_prob=args.encoder_dropout,
+                factor=args.factor,
+            )
+        elif args.encoder == "transformer_old":
+            encoder = TransformerEncoderOld(
                 args,
                 args.dims,
                 args.encoder_hidden,
