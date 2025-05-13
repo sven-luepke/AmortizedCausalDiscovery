@@ -336,7 +336,7 @@ def forward_pass_and_eval(
         #losses["loss_kl_temporal"] = kl.mean() * 1000000
         losses["factor_loss"] = factors_soft.sum() / factors_soft.shape[0]
     else:
-        losses["factor_loss"] = 0
+        losses["factor_loss"] = torch.tensor(0.0, device=losses["loss_nll"].device)
 
     ### output losses ###
     losses["loss_nll"] = utils.nll_gaussian(

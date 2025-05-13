@@ -83,13 +83,13 @@ class TransformerEncoder(Encoder):
         causal_change_index_mask = torch.zeros(B, T + 1, dtype=torch.float32, device=x.device)
         max_causal_change_count = self.num_causal_changes 
         transformer_output = x
+        cls_out = self.cls_token.expand(B, -1)
 
         causal_graphs = []
         change_indicator_list = []       
         #transformer_output, cls_out = self.cross_transformer_0(transformer_output, cls_out)
 
         for i in range(max_causal_change_count):
-            cls_out = self.cls_token.expand(B, -1)
             transformer_output, cls_out = self.cross_transformer_1(transformer_output, cls_out)
             transformer_output, cls_out = self.cross_transformer_2(transformer_output, cls_out)
 
