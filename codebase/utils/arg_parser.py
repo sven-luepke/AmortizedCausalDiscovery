@@ -49,6 +49,12 @@ def parse_args():
         default=0,
         help="Maximum number of causal graph changes.",
     )
+    parser.add_argument(
+        "--v1_skip_connections",
+        action="store_true",
+        default=False,
+        help="Should we use skip connections in the recurrenttransformer?",
+    )
 
     ############## architecture ##############
     parser.add_argument(

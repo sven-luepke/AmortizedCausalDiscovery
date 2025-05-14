@@ -60,6 +60,8 @@ class TransformerEncoderOld(Encoder):
 
         self.layer_norm = nn.LayerNorm(n_hid)
 
+        self.v1_skip_connections = args.v1_skip_connections
+
 
     def forward(self, inputs, rel_rec, rel_send):
         # Input shape: [num_sims, num_atoms, num_timesteps, num_dims]
@@ -71,11 +73,11 @@ class TransformerEncoderOld(Encoder):
         x = self.cross_transformer_0(x)
         x = self.cross_transformer_1(x)
 
-        x = torch.cumsum(x, dim=2)
-
-        x = x.reshape(-1, T, D)
-        x = self.layer_norm(x)
-        x = x.reshape(B, N, T, D)
+        if self.v1_skip_connections:
+            x = torch.cumsum(x, dim=2)
+            x = x.reshape(-1, T, D)
+            x = self.layer_norm(x)
+            x = x.reshape(B, N, T, D)
 
         # x.shape = [batch_size, num_atoms, num_timesteps, num_dims]
         x = x.permute(0, 2, 1, 3).reshape(-1, N, D)
