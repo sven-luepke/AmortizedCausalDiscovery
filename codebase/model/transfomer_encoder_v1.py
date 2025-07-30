@@ -51,7 +51,10 @@ class TransformerEncoderOld(Encoder):
         self.init_weights()
 
         self.in_proj = nn.Linear(n_in, n_hid)
-        self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
+        self.num_atoms = args.num_atoms
+        self.timesteps = args.timesteps
+        #self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
+        self.pe = nn.Parameter(torch.randn(1, self.num_atoms, self.timesteps, n_hid) * 0.02)
 
         self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)

@@ -31,3 +31,9 @@ Session.vim
 
 test_outputs
 test.ipynb
+
+*/logs_basketball_transformer/
+*/logs_basketball_mlp/
+*/logs_basketball/
+*/logs_basketball_acd/
+codebase/basketball_top

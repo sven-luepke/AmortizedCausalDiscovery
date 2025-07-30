@@ -7,6 +7,7 @@ import time
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import os
 
 from model.modules import *
 from utils import arg_parser, logger, data_loader, forward_pass_and_eval
@@ -96,7 +97,7 @@ def val(epoch):
         data, relations, temperatures = data_loader.unpack_batches(args, minibatch)
 
         with torch.no_grad():
-            losses, _, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
+            losses, output, _, _, _ = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -144,13 +145,13 @@ def test(encoder, decoder, epoch):
         data, relations, temperatures = data_loader.unpack_batches(args, minibatch)
 
         with torch.no_grad():
-            assert (data.size(2) - args.timesteps) >= args.timesteps
+            #assert (data.size(2) - args.timesteps) >= args.timesteps
 
-            data_encoder = data[:, :, : args.timesteps, :].contiguous()
-            data_decoder = data[:, :, args.timesteps : -1, :].contiguous()
-            relations = relations[:, :args.timesteps].contiguous()
+            #data_encoder = data[:, :, : args.timesteps, :].contiguous()
+            #data_decoder = data[:, :, args.timesteps : -1, :].contiguous()
+            #relations = relations[:, :args.timesteps].contiguous()
 
-            losses, _, _, edges, factors = forward_pass_and_eval.forward_pass_and_eval(
+            losses, output, _, edges, factors = forward_pass_and_eval.forward_pass_and_eval(
                 args,
                 encoder,
                 decoder,
@@ -159,85 +160,61 @@ def test(encoder, decoder, epoch):
                 rel_rec,
                 rel_send,
                 True,
-                data_encoder=data_encoder,
-                data_decoder=data_decoder,
+                #data_encoder=data_encoder,
+                #data_decoder=data_decoder,
                 edge_probs=edge_probs,
                 log_prior=log_prior,
                 testing=True,
                 temperatures=temperatures,
             )
 
-            import os
-            output_dir = os.path.join(args.log_path, "test_outputs")
-            os.makedirs(output_dir, exist_ok=True)
-            ground_truth_edges = relations
-            predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
-            output_data = torch.stack([ground_truth_edges, predicted_edges], dim=0)
-            output_path = os.path.join(output_dir, f"batch_{batch_idx}.pt")
-            torch.save(output_data, output_path)
-
-            if batch_idx < 2:
-                ground_truth_edges = relations
-                predicted_edges = torch.argmax(edges, dim=-1)[:, :ground_truth_edges.size(1)]
-
-                batch_size = ground_truth_edges.size(0)
-                for sample_index in range(batch_size):
-                    # Convert tensor to numpy arrays (detach if needed)
-                    sample_ground_truth_edges = ground_truth_edges[sample_index].detach().cpu().numpy()
-                    sample_predicted_edges = predicted_edges[sample_index].detach().cpu().numpy()
-
-                    # Calculate the difference map
-                    # 0 = correct prediction
-                    # 1 = false positive (predicted edge not in GT)
-                    # 2 = false negative (GT edge not predicted)
-                    difference_map = np.zeros_like(sample_ground_truth_edges)
-                    difference_map[(sample_predicted_edges == 1) & (sample_ground_truth_edges == 0)] = 1  # FP
-                    difference_map[(sample_predicted_edges == 0) & (sample_ground_truth_edges == 1)] = 2  # FN
-
-                    # Create custom colormap for error map
-                    from matplotlib.colors import ListedColormap
-                    cmap_diff = ListedColormap(['black', 'red', 'blue'])  # 0: correct, 1: FP, 2: FN
-
-                    # Create a figure with three subplots
-                    fig, axes = plt.subplots(1, 3, figsize=(15, 10))
-
-                    # Determine dimensions: rows (height) and columns (width) of the images
-                    num_rows, num_cols = sample_ground_truth_edges.shape
-
-                    # Helper function to add grid lines at every pixel boundary
-                    def add_pixel_grid(ax, num_rows, num_cols):
-                        # Draw horizontal grid lines
-                        for y in range(1, num_rows):
-                            ax.axhline(y - 0.5, color='gray', linestyle='-', linewidth=0.8)
-                        # Draw vertical grid lines
-                        for x in range(1, num_cols):
-                            ax.axvline(x - 0.5, color='gray', linestyle='-', linewidth=0.2)
-
-                    # Ground Truth subplot
-                    axes[0].imshow(1 - sample_ground_truth_edges, cmap='gray', interpolation='nearest')
-                    add_pixel_grid(axes[0], num_rows, num_cols)
-                    axes[0].set_title("Ground Truth", fontsize=20)
-                    axes[0].axis('off')  # Removes the axis labels and ticks
-
-                    # Predicted subplot
-                    axes[1].imshow(1 - sample_predicted_edges, cmap='gray', interpolation='nearest')
-                    add_pixel_grid(axes[1], num_rows, num_cols)
-                    axes[1].set_title("Predicted", fontsize=20)
-                    axes[1].axis('off')
-
-                    # Error Map subplot
-                    axes[2].imshow(difference_map, cmap=cmap_diff, interpolation='nearest')
-                    add_pixel_grid(axes[2], num_rows, num_cols)
-                    axes[2].set_title("Error Map", fontsize=20)
-                    axes[2].axis('off')
-
-                    # Save the output
-                    plt.tight_layout()
-                    import os
-                    out_path = os.path.join(args.plotdir, f"sample_{batch_idx}_{sample_index}_grid_with_diff.png")
-                    plt.savefig(out_path)
-                    plt.close(fig)
+            target = data[:, :, 1:, :]
+            print(output.shape)
+            print(target.shape)
             
+            # Plot trajectories for each sample in the batch
+            batch_size = output.shape[0]
+            num_atoms = output.shape[1]
+            
+            # Convert tensors to numpy for plotting
+            output_np = output.detach().cpu().numpy()
+            target_np = target.detach().cpu().numpy()
+            
+            # Create plots directory if it doesn't exist
+            plots_dir = os.path.join(args.plotdir, f"test_trajectories_batch_{batch_idx}")
+            if not os.path.exists(plots_dir):
+                os.makedirs(plots_dir)
+            
+            # Plot each sample in the batch
+            for sample_idx in range(batch_size):
+                # Also create a summary plot showing all atoms for this sample
+                fig, ax = plt.subplots(figsize=(14, 8))
+                for atom_idx in range(num_atoms):
+                    # Plot x,y trajectories with same color for each atom
+                    color = plt.cm.tab10(atom_idx % 10)  # Use a color from tab10 colormap
+                    ax.plot(output_np[sample_idx, atom_idx, :, 1], 
+                            output_np[sample_idx, atom_idx, :, 0], 
+                            '--', color=color, label=f'Atom {atom_idx} (Pred)', alpha=0.7)
+                    ax.plot(target_np[sample_idx, atom_idx, :, 1], 
+                            target_np[sample_idx, atom_idx, :, 0], 
+                            '-', color=color, label=f'Atom {atom_idx} (Target)', alpha=0.8)
+                
+                plt.xticks([])
+                plt.yticks([])
+                plt.xlabel("")
+                plt.ylabel("")
+                plt.title("")
+                # Remove border/spines
+                ax = plt.gca()
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+                plt.tight_layout()
+                
+                summary_filename = os.path.join(plots_dir, f'summary_sample_{sample_idx}.png')
+                plt.savefig(summary_filename, dpi=150, bbox_inches='tight')
+                plt.close()
+            
+            print(f"Saved trajectory plots for batch {batch_idx} to {plots_dir}")
 
         test_losses = utils.append_losses(test_losses, losses)
 

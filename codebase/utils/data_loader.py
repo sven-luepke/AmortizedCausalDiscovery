@@ -32,6 +32,18 @@ def load_data(args):
         ) = load_springs_data(
             args, args.batch_size_multiGPU, args.suffix, datadir=args.datadir
         )
+    elif "basketball" in args.suffix:
+        (
+            train_loader,
+            valid_loader,
+            test_loader,
+            loc_max,
+            loc_min,
+            vel_max,
+            vel_min,
+        ) = load_basketball_data(
+            args, args.batch_size_multiGPU, datadir=args.datadir
+        )
     else:
         raise NameError("Unknown data to be loaded")
 
@@ -397,3 +409,132 @@ def unpack_batches(args, minibatch):
         if args.load_temperatures:
             temperatures = temperatures.cuda()
     return data, relations, temperatures
+
+
+def load_basketball_data(args, batch_size=1, datadir="data"):
+    """Load basketball trajectory data and format it for the model."""
+    
+    print("Loading basketball data from {}".format(datadir))
+    
+    # Load the basketball trajectory files
+    loc_train = np.load(os.path.join(datadir, "train_trajectories_700.npy"))
+    loc_valid = np.load(os.path.join(datadir, "val_trajectories_700.npy"))  
+    loc_test = np.load(os.path.join(datadir, "test_trajectories_700.npy"))
+    
+    # Basketball data shape: (num_samples, num_timesteps, 2, num_players)
+    # We need to transpose to match springs format: (num_samples, num_timesteps, num_dims, num_atoms)
+    # No change needed as the format already matches
+    
+    # Compute velocities from positions (finite differences)
+    def compute_velocity(positions):
+        # positions: (num_samples, num_timesteps, num_dims, num_atoms)
+        vel = np.zeros_like(positions)
+        vel[:, 1:] = positions[:, 1:] - positions[:, :-1]
+        vel[:, 0] = vel[:, 1]  # Copy first velocity
+        return vel
+    
+    vel_train = compute_velocity(loc_train)
+    vel_valid = compute_velocity(loc_valid)
+    vel_test = compute_velocity(loc_test)
+    
+    # Create dummy edge data (we don't have ground truth edges for basketball)
+    # For now, create random edges - this could be improved with domain knowledge
+    num_atoms = loc_train.shape[3]  # number of players
+    
+    def create_dummy_edges(num_samples, num_timesteps, num_atoms, dynamic=True):
+        if dynamic:
+            # Create dynamic edges for each sample (time-varying)
+            # For dynamic edges, we need 4D: [num_samples, num_timesteps, num_atoms, num_atoms]
+            edges = np.random.choice([0, 1], size=(num_samples, num_timesteps, num_atoms, num_atoms), p=[0.7, 0.3])
+            # Remove self-edges for all timesteps
+            for i in range(num_samples):
+                for t in range(num_timesteps):
+                    np.fill_diagonal(edges[i, t], 0)
+        else:
+            # Create static edges for each sample 
+            # For static edges, we need 3D: [num_samples, num_atoms, num_atoms]
+            edges = np.random.choice([0, 1], size=(num_samples, num_atoms, num_atoms), p=[0.7, 0.3])
+            # Remove self-edges
+            for i in range(num_samples):
+                np.fill_diagonal(edges[i], 0)
+        return edges
+    
+    # Check if we should create dynamic or static edges based on args.dynamic
+    use_dynamic = getattr(args, 'dynamic', 1) != 0  # Default to dynamic if not specified
+    
+    edges_train = create_dummy_edges(loc_train.shape[0], loc_train.shape[1], num_atoms, dynamic=use_dynamic)
+    edges_valid = create_dummy_edges(loc_valid.shape[0], loc_valid.shape[1], num_atoms, dynamic=use_dynamic)
+    edges_test = create_dummy_edges(loc_test.shape[0], loc_test.shape[1], num_atoms, dynamic=use_dynamic)
+    
+    # Limit samples if specified
+    if args.training_samples != 0:
+        loc_train = loc_train[:args.training_samples]
+        vel_train = vel_train[:args.training_samples]
+        edges_train = edges_train[:args.training_samples]
+
+    if args.test_samples != 0:
+        loc_test = loc_test[:args.test_samples]
+        vel_test = vel_test[:args.test_samples]
+        edges_test = edges_test[:args.test_samples]
+
+    # Compute normalization parameters
+    loc_max = loc_train.max()
+    loc_min = loc_train.min()
+    vel_max = vel_train.max()
+    vel_min = vel_train.min()
+
+    # Exclude self edges
+    off_diag_idx = get_off_diag_idx(num_atoms)
+
+    train_data = data_preparation(
+        loc_train,
+        vel_train,
+        edges_train,
+        loc_min,
+        loc_max,
+        vel_min,
+        vel_max,
+        off_diag_idx,
+        num_atoms,
+        temperature=None,
+    )
+    valid_data = data_preparation(
+        loc_valid,
+        vel_valid,
+        edges_valid,
+        loc_min,
+        loc_max,
+        vel_min,
+        vel_max,
+        off_diag_idx,
+        num_atoms,
+        temperature=None,
+    )
+    test_data = data_preparation(
+        loc_test,
+        vel_test,
+        edges_test,
+        loc_min,
+        loc_max,
+        vel_min,
+        vel_max,
+        off_diag_idx,
+        num_atoms,
+        temperature=None,
+    )
+    
+    train_data_loader = DataLoader(
+        train_data, batch_size=batch_size, shuffle=True, num_workers=8
+    )
+    valid_data_loader = DataLoader(valid_data, batch_size=batch_size, num_workers=8)
+    test_data_loader = DataLoader(test_data, batch_size=batch_size, num_workers=8)
+
+    return (
+        train_data_loader,
+        valid_data_loader,
+        test_data_loader,
+        loc_max,
+        loc_min,
+        vel_max,
+        vel_min,
+    )

@@ -312,8 +312,8 @@ def forward_pass_and_eval(
     #################### MAIN LOSSES ####################
     ### latent losses ###
     losses["loss_kl"] = utils.kl_latent(args, prob, log_prior, predicted_atoms)
-    losses["acc"] = utils.edge_accuracy(logits, relations)
-    losses["auroc"] = utils.calc_auroc(prob, relations)
+    #losses["acc"] = utils.edge_accuracy(logits, relations)
+    #losses["auroc"] = utils.calc_auroc(prob, relations)
 
     #precision, recall, f1_score, accuracy = segmentation_covering_f1(edges[:, :, :, 1], relations)
     #losses["segmentation_precision"] = precision
@@ -343,7 +343,9 @@ def forward_pass_and_eval(
         output, target, args.var
     )
 
-    losses["loss_mse"] = F.mse_loss(output, target)
+    squared_error = (output - target) ** 2
+    losses["loss_mse"] = torch.mean(squared_error)
+    losses["loss_mse_std"] = torch.std(squared_error)
 
     total_loss = losses["loss_nll"] + losses["loss_kl"] + losses["factor_loss"] * reg_weight
     total_loss += args.teacher_forcing * losses["mse_unobserved"]

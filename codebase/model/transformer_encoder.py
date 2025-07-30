@@ -58,14 +58,17 @@ class TransformerEncoder(Encoder):
         self.init_weights()
 
         self.in_proj = nn.Linear(n_in, n_hid)
-        self.pe = nn.Parameter(torch.randn(1, 5, 49, n_hid) * 0.02)
+        # Make positional encoding dynamic based on args
+        self.num_atoms = args.num_atoms
+        self.timesteps = args.timesteps
+        self.pe = nn.Parameter(torch.randn(1, self.num_atoms, self.timesteps, n_hid) * 0.02)
         self.cls_token = nn.Parameter(torch.zeros(1, n_hid))
 
        # self.cross_transformer_0 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_1 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
         self.cross_transformer_2 = CrossTransformerLayer(d_model=n_hid, nhead=4, dim_feedforward=256)
 
-        seq_len = 49
+        seq_len = self.timesteps
         self.next_change_index_offsetlayer = nn.Linear(n_hid, seq_len + 1)
         # last logit is for no change
 
@@ -78,6 +81,7 @@ class TransformerEncoder(Encoder):
 
         x = self.in_proj(inputs)
         B, N, T, D = x.shape
+
         x = x + self.pe
 
         causal_change_index_mask = torch.zeros(B, T + 1, dtype=torch.float32, device=x.device)

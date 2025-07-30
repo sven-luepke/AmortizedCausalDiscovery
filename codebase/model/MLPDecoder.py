@@ -61,6 +61,9 @@ class MLPDecoder(nn.Module):
         else:
             start_idx = 0
 
+        if single_timestep_rel_type.shape[1] != pre_msg.shape[1]:
+            single_timestep_rel_type = single_timestep_rel_type[:, :pre_msg.shape[1], :, :]
+
         # Run separate MLP for every edge type
         # NOTE: To exclude one edge type, simply offset range by 1
         for i in range(start_idx, len(self.msg_fc2)):
