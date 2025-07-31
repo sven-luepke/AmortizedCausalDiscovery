@@ -1,0 +1,134 @@
+Namespace(seed=42, GPU_to_use=None, epochs=32, batch_size=4, lr=0.001, lr_decay=200, gamma=0.5, training_samples=0, test_samples=0, prediction_steps=20, dynamic=0, v1_skip_connections=False, encoder_hidden=256, decoder_hidden=256, encoder='transformer_old', decoder='mlp', prior=1, edge_types=2, dont_use_encoder=False, lr_z=0.1, global_temp=False, load_temperatures=False, alpha=2, num_cats=3, unobserved=0, model_unobserved=0, dont_shuffle_unobserved=False, teacher_forcing=0, suffix='_basketball10', timesteps=700, num_atoms=10, dims=4, datadir='./data', save_folder='logs_basketball_transformer', expername='', sym_save_folder='../logs', load_folder='', test_time_adapt=False, lr_logits=0.01, num_tta_steps=100, dont_skip_first=False, temp=0.5, hard=False, no_validate=False, no_cuda=False, var=5e-07, encoder_dropout=0.0, decoder_dropout=0.0, no_factor=False, test=True, device=device(type='cuda', index=0), cuda=True, factor=True, validate=True, shuffle_unobserved=True, skip_first=True, use_encoder=True, time='2025-06-17T20:35:48.594293', num_GPU=1, batch_size_multiGPU=4, log_path='logs_basketball_transformer/2025-06-17T20:35:48.594293')
+DataParallel(
+  (module): TransformerEncoderOld(
+    (mlp2): MLP(
+      (fc1): Linear(in_features=512, out_features=256, bias=True)
+      (fc2): Linear(in_features=256, out_features=256, bias=True)
+      (bn): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (mlp3): MLP(
+      (fc1): Linear(in_features=256, out_features=256, bias=True)
+      (fc2): Linear(in_features=256, out_features=256, bias=True)
+      (bn): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (mlp4): MLP(
+      (fc1): Linear(in_features=768, out_features=256, bias=True)
+      (fc2): Linear(in_features=256, out_features=256, bias=True)
+      (bn): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (fc_out): Linear(in_features=256, out_features=2, bias=True)
+    (in_proj): Linear(in_features=4, out_features=256, bias=True)
+    (cross_transformer_0): CrossTransformerLayer(
+      (covariate_transformer): TransformerEncoderLayer(
+        (self_attn): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+        )
+        (linear1): Linear(in_features=256, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+        (linear2): Linear(in_features=256, out_features=256, bias=True)
+        (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (dropout1): Dropout(p=0.1, inplace=False)
+        (dropout2): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (cross_transformer_1): CrossTransformerLayer(
+      (covariate_transformer): TransformerEncoderLayer(
+        (self_attn): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+        )
+        (linear1): Linear(in_features=256, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+        (linear2): Linear(in_features=256, out_features=256, bias=True)
+        (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (dropout1): Dropout(p=0.1, inplace=False)
+        (dropout2): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (switch_layer): Linear(in_features=256, out_features=1, bias=True)
+    (layer_norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+  )
+)
+DataParallel(
+  (module): MLPDecoder(
+    (msg_fc1): ModuleList(
+      (0-1): 2 x Linear(in_features=8, out_features=256, bias=True)
+    )
+    (msg_fc2): ModuleList(
+      (0-1): 2 x Linear(in_features=256, out_features=256, bias=True)
+    )
+    (out_fc1): Linear(in_features=260, out_features=256, bias=True)
+    (out_fc2): Linear(in_features=256, out_features=256, bias=True)
+    (out_fc3): Linear(in_features=256, out_features=4, bias=True)
+  )
+)
+0 train	 	loss_kl -1.5839334329 	factor_loss 605.2413126628 	loss_nll 414538467445.3333129883 	loss_mse 148.2612471986 	loss 414540895783.1110839844 	inference time 0.3691261874 	time: 13.8712s 	
+0 validate	 	loss_kl -0.0005601546 	factor_loss 696.4404907227 	loss_nll 778621728.0000000000 	loss_mse 0.2784770429 	loss 778622432.0000000000 	inference time 0.2400115728 	time: 1.5533s 	
+1 train	 	loss_kl -1.2210117579 	factor_loss 697.5807359484 	loss_nll 177876725.7777777910 	loss_mse 0.0636182883 	loss 180667046.6666666567 	inference time 0.3311915398 	time: 11.1618s 	
+1 validate	 	loss_kl -0.0000787368 	factor_loss 699.0093078613 	loss_nll 273917928.0000000000 	loss_mse 0.0979677849 	loss 273918632.0000000000 	inference time 0.2381114960 	time: 1.6586s 	
+2 train	 	loss_kl -1.3719208505 	factor_loss 699.0212198893 	loss_nll 80587098.8888888955 	loss_mse 0.0288222816 	loss 83383183.3333333284 	inference time 0.3287538952 	time: 11.2963s 	
+2 validate	 	loss_kl -0.0043537230 	factor_loss 699.4121704102 	loss_nll 38423338.0000000000 	loss_mse 0.0137422527 	loss 38424038.0000000000 	inference time 0.2780332565 	time: 1.5463s 	
+3 train	 	loss_kl -1.4370121956 	factor_loss 699.3261311849 	loss_nll 31776905.8888888881 	loss_mse 0.0113651310 	loss 34574208.8888888881 	inference time 0.5705772241 	time: 13.7711s 	
+3 validate	 	loss_kl -0.0506812502 	factor_loss 699.5318603516 	loss_nll 25616668.0000000000 	loss_mse 0.0091618984 	loss 25617368.0000000000 	inference time 0.2560783625 	time: 1.7698s 	
+4 train	 	loss_kl -1.4702300628 	factor_loss 699.4162529839 	loss_nll 21309175.6666666679 	loss_mse 0.0076213079 	loss 24106838.4444444440 	inference time 0.3277598222 	time: 11.5487s 	
+4 validate	 	loss_kl -1.1880924702 	factor_loss 699.5755615234 	loss_nll 14595214.5000000000 	loss_mse 0.0052200337 	loss 14595913.0000000000 	inference time 0.2542586327 	time: 1.6058s 	
+5 train	 	loss_kl -1.5259379943 	factor_loss 699.4499918620 	loss_nll 13913816.3888888881 	loss_mse 0.0049763294 	loss 16711614.5555555560 	inference time 0.3756906192 	time: 14.5020s 	
+5 validate	 	loss_kl -2.1208437681 	factor_loss 699.5934143066 	loss_nll 36906749.0000000000 	loss_mse 0.0131998393 	loss 36907448.0000000000 	inference time 0.2653141022 	time: 1.7392s 	
+6 train	 	loss_kl -1.5313069820 	factor_loss 699.4686143663 	loss_nll 10330158.6111111119 	loss_mse 0.0036946204 	loss 13128031.6666666660 	inference time 0.3422128095 	time: 12.0263s 	
+6 validate	 	loss_kl -2.8512862921 	factor_loss 699.6005859375 	loss_nll 18479131.0000000000 	loss_mse 0.0066091318 	loss 18479828.0000000000 	inference time 0.2760883570 	time: 1.7664s 	
+7 train	 	loss_kl -1.4877495037 	factor_loss 699.4833034939 	loss_nll 8089710.2500000000 	loss_mse 0.0028933155 	loss 10887641.7777777780 	inference time 0.3594929907 	time: 14.4736s 	
+7 validate	 	loss_kl -2.4260360003 	factor_loss 699.6037292480 	loss_nll 13876591.5000000000 	loss_mse 0.0049630154 	loss 13877289.0000000000 	inference time 0.2531201839 	time: 1.5739s 	
+8 train	 	loss_kl -1.4794000785 	factor_loss 699.4816284180 	loss_nll 5163686.0277777780 	loss_mse 0.0018468120 	loss 7961611.0555555560 	inference time 0.3234695858 	time: 11.4282s 	
+8 validate	 	loss_kl -2.9024916887 	factor_loss 699.6050109863 	loss_nll 4843147.2500000000 	loss_mse 0.0017321701 	loss 4843843.8750000000 	inference time 0.2651669979 	time: 1.7007s 	
+9 train	 	loss_kl -1.5059516695 	factor_loss 699.4803805881 	loss_nll 4884513.6111111110 	loss_mse 0.0017469650 	loss 7682433.5555555560 	inference time 0.3441554440 	time: 11.8446s 	
+9 validate	 	loss_kl -2.7996094227 	factor_loss 699.6055297852 	loss_nll 4367707.7500000000 	loss_mse 0.0015621274 	loss 4368404.5000000000 	inference time 0.2700389624 	time: 1.6176s 	
+10 train	 	loss_kl -1.5132788022 	factor_loss 699.4883897569 	loss_nll 4493407.5555555560 	loss_mse 0.0016070843 	loss 7291359.6111111110 	inference time 0.3512063291 	time: 13.8175s 	
+10 validate	 	loss_kl -2.4341472387 	factor_loss 699.6057434082 	loss_nll 4533375.0000000000 	loss_mse 0.0016213788 	loss 4534072.1250000000 	inference time 0.2549315691 	time: 1.6167s 	
+11 train	 	loss_kl -1.4985102945 	factor_loss 699.4871487088 	loss_nll 4343784.5277777780 	loss_mse 0.0015535710 	loss 7141731.5555555560 	inference time 0.3319811821 	time: 11.4643s 	
+11 validate	 	loss_kl -2.4968786240 	factor_loss 699.6058654785 	loss_nll 4145187.8750000000 	loss_mse 0.0014825421 	loss 4145884.8750000000 	inference time 0.2489882708 	time: 1.5869s 	
+12 train	 	loss_kl -1.5027211507 	factor_loss 699.4803466797 	loss_nll 4910228.8055555560 	loss_mse 0.0017561620 	loss 7708148.5555555560 	inference time 0.3536365562 	time: 13.9328s 	
+12 validate	 	loss_kl -2.6185859442 	factor_loss 699.6059265137 	loss_nll 4904252.0000000000 	loss_mse 0.0017540244 	loss 4904949.0000000000 	inference time 0.2607557774 	time: 1.6428s 	
+13 train	 	loss_kl -1.5186678635 	factor_loss 699.4802585178 	loss_nll 4447944.6388888890 	loss_mse 0.0015908242 	loss 7245864.2222222220 	inference time 0.3150420454 	time: 11.1837s 	
+13 validate	 	loss_kl -2.7670073509 	factor_loss 699.6059265137 	loss_nll 4188726.7500000000 	loss_mse 0.0014981140 	loss 4189423.6250000000 	inference time 0.2474849224 	time: 1.6563s 	
+14 train	 	loss_kl -1.5711991125 	factor_loss 699.4887695312 	loss_nll 3392011.1111111110 	loss_mse 0.0012131657 	loss 6189964.6111111110 	inference time 0.5963762336 	time: 14.2594s 	
+14 validate	 	loss_kl -1.7172013521 	factor_loss 699.6058959961 	loss_nll 19088471.0000000000 	loss_mse 0.0068270646 	loss 19089169.0000000000 	inference time 0.2528877258 	time: 1.6721s 	
+15 train	 	loss_kl -1.5503201087 	factor_loss 699.4865790473 	loss_nll 5057361.2500000000 	loss_mse 0.0018087845 	loss 7855305.8333333330 	inference time 0.3209397528 	time: 11.0289s 	
+15 validate	 	loss_kl -2.3425737619 	factor_loss 699.6058044434 	loss_nll 6478057.2500000000 	loss_mse 0.0023169017 	loss 6478754.2500000000 	inference time 0.2561368942 	time: 1.5740s 	
+16 train	 	loss_kl -1.5573411650 	factor_loss 699.4847073025 	loss_nll 2909344.8333333335 	loss_mse 0.0010405382 	loss 5707282.1111111110 	inference time 0.3587965700 	time: 11.5794s 	
+16 validate	 	loss_kl -2.8844935894 	factor_loss 699.6058044434 	loss_nll 3640660.3750000000 	loss_mse 0.0013020961 	loss 3641356.8750000000 	inference time 0.2654048204 	time: 1.8780s 	
+17 train	 	loss_kl -1.5187716617 	factor_loss 699.4790513780 	loss_nll 2636950.5000000000 	loss_mse 0.0009431154 	loss 5434865.1666666670 	inference time 0.3509299755 	time: 11.6875s 	
+17 validate	 	loss_kl -2.9922118187 	factor_loss 699.6058044434 	loss_nll 3462670.2500000000 	loss_mse 0.0012384371 	loss 3463366.7500000000 	inference time 0.2608213425 	time: 1.5254s 	
+18 train	 	loss_kl -1.5162400537 	factor_loss 699.4794786241 	loss_nll 2687855.6666666665 	loss_mse 0.0009613218 	loss 5485772.0555555560 	inference time 0.3221065998 	time: 11.0258s 	
+18 validate	 	loss_kl -2.8944295645 	factor_loss 699.6058044434 	loss_nll 2854876.8750000000 	loss_mse 0.0010210576 	loss 2855573.3750000000 	inference time 0.2358238697 	time: 1.5060s 	
+19 train	 	loss_kl -1.5564422740 	factor_loss 699.4828559028 	loss_nll 3202127.1805555555 	loss_mse 0.0011452530 	loss 6000057.0555555560 	inference time 0.3486356470 	time: 13.7526s 	
+19 validate	 	loss_kl -2.9916028976 	factor_loss 699.6056518555 	loss_nll 3146419.0000000000 	loss_mse 0.0011253287 	loss 3147115.5000000000 	inference time 0.2641848326 	time: 1.5721s 	
+20 train	 	loss_kl -1.5222328239 	factor_loss 699.4877048069 	loss_nll 2329777.1736111110 	loss_mse 0.0008332537 	loss 5127726.5000000000 	inference time 0.3361740377 	time: 11.5911s 	
+20 validate	 	loss_kl -2.7602721453 	factor_loss 699.6056213379 	loss_nll 2446379.1250000000 	loss_mse 0.0008749569 	loss 2447075.9375000000 	inference time 0.2652645111 	time: 1.7208s 	
+21 train	 	loss_kl -1.4797108306 	factor_loss 699.4868910048 	loss_nll 2189483.1944444445 	loss_mse 0.0007830770 	loss 4987429.2777777780 	inference time 0.6156455676 	time: 15.1896s 	
+21 validate	 	loss_kl -2.8763265610 	factor_loss 699.6055908203 	loss_nll 2330173.8125000000 	loss_mse 0.0008333956 	loss 2330870.5625000000 	inference time 0.2499529123 	time: 1.5840s 	
+22 train	 	loss_kl -1.5605303976 	factor_loss 699.4892849392 	loss_nll 2184069.9652777780 	loss_mse 0.0007811410 	loss 4982025.5000000000 	inference time 0.3791635036 	time: 13.1968s 	
+22 validate	 	loss_kl -1.7936757803 	factor_loss 699.6054992676 	loss_nll 2900374.7500000000 	loss_mse 0.0010373300 	loss 2901072.5000000000 	inference time 0.2691973448 	time: 1.6743s 	
+23 train	 	loss_kl -1.4841799736 	factor_loss 699.4837443034 	loss_nll 2095205.5138888890 	loss_mse 0.0007493582 	loss 4893139.0000000000 	inference time 0.3749267525 	time: 15.3982s 	
+23 validate	 	loss_kl -2.4744113684 	factor_loss 699.6053771973 	loss_nll 2469227.0000000000 	loss_mse 0.0008831284 	loss 2469924.0625000000 	inference time 0.3009231091 	time: 1.7085s 	
+24 train	 	loss_kl -1.5130196412 	factor_loss 699.4735582140 	loss_nll 1851684.9861111110 	loss_mse 0.0006622622 	loss 4649577.6666666670 	inference time 0.3703347577 	time: 12.6645s 	
+24 validate	 	loss_kl -2.5761109591 	factor_loss 699.6053161621 	loss_nll 2258677.7500000000 	loss_mse 0.0008078247 	loss 2259374.7500000000 	inference time 0.2808716297 	time: 1.7398s 	
+25 train	 	loss_kl -1.5271504389 	factor_loss 699.4840766059 	loss_nll 1803207.1111111110 	loss_mse 0.0006449239 	loss 4601141.8055555560 	inference time 0.3518459267 	time: 14.3619s 	
+25 validate	 	loss_kl -2.9046840668 	factor_loss 699.6052551270 	loss_nll 2037668.3750000000 	loss_mse 0.0007287799 	loss 2038365.0000000000 	inference time 0.2716536522 	time: 1.7716s 	
+26 train	 	loss_kl -1.5737469461 	factor_loss 699.4781426324 	loss_nll 1881626.4722222222 	loss_mse 0.0006729708 	loss 4679537.5000000000 	inference time 0.3794472747 	time: 12.3127s 	
+26 validate	 	loss_kl -3.0235594511 	factor_loss 699.6051940918 	loss_nll 1978030.9375000000 	loss_mse 0.0007074503 	loss 1978727.5000000000 	inference time 0.2553058863 	time: 1.5679s 	
+27 train	 	loss_kl -1.4801425735 	factor_loss 699.4787936740 	loss_nll 1766558.4375000000 	loss_mse 0.0006318164 	loss 4564472.1388888890 	inference time 0.3409881062 	time: 11.4617s 	
+27 validate	 	loss_kl -2.9760257006 	factor_loss 699.6051330566 	loss_nll 2466230.1250000000 	loss_mse 0.0008820567 	loss 2466926.6875000000 	inference time 0.2587511539 	time: 4.2344s 	
+28 train	 	loss_kl -1.5350080464 	factor_loss 699.4870266385 	loss_nll 1964890.9722222222 	loss_mse 0.0007027507 	loss 4762837.5000000000 	inference time 0.3403374089 	time: 11.8573s 	
+28 validate	 	loss_kl -2.6964873075 	factor_loss 699.6051025391 	loss_nll 2122926.7500000000 	loss_mse 0.0007592728 	loss 2123623.6250000000 	inference time 0.2524942160 	time: 1.6324s 	
+29 train	 	loss_kl -1.5048057768 	factor_loss 699.4768405490 	loss_nll 1819927.4444444445 	loss_mse 0.0006509040 	loss 4617833.3055555560 	inference time 0.3449744648 	time: 11.7239s 	
+29 validate	 	loss_kl -2.6341319084 	factor_loss 699.6050109863 	loss_nll 2854486.1250000000 	loss_mse 0.0010209178 	loss 2855182.8750000000 	inference time 0.2786079645 	time: 1.6232s 	
+30 train	 	loss_kl -1.5120539798 	factor_loss 699.4858466254 	loss_nll 1985587.7222222222 	loss_mse 0.0007101530 	loss 4783529.6111111110 	inference time 0.6328150696 	time: 14.6357s 	
+30 validate	 	loss_kl -2.8278597593 	factor_loss 699.6049499512 	loss_nll 2120668.1250000000 	loss_mse 0.0007584650 	loss 2121364.8750000000 	inference time 0.2353254557 	time: 1.5498s 	
+31 train	 	loss_kl -1.5461222861 	factor_loss 699.4797227648 	loss_nll 1885422.6250000000 	loss_mse 0.0006743286 	loss 4683339.8888888890 	inference time 0.3284022013 	time: 11.1314s 	
+31 validate	 	loss_kl -2.8109061718 	factor_loss 699.6048889160 	loss_nll 2114021.7500000000 	loss_mse 0.0007560879 	loss 2114718.5625000000 	inference time 0.2694143057 	time: 1.8038s 	
+Best Epoch: 0026
+-------------------------------- 
+--------Testing----------------- 
+-------------------------------- 
+loss_kl -1.8017063737 	factor_loss 699.6175842285 	loss_nll 1970831.0000000000 	loss_mse 0.0007048752 	loss 1971528.7500000000 	inference time 0.3803495169 	
